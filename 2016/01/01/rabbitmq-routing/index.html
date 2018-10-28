@@ -1,0 +1,99 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta name="generator" content="Hexo 3.8.0"><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="description"><meta name="keywords" content="keywords1,keywords2,"><title>Rabbitmq（五）－Routing | 翁英健的博客</title><link rel="stylesheet" type="text/css" href="//fonts.neworld.org/css?family=Source+Code+Pro"><link rel="stylesheet" type="text/css" href="/css/style.css?v=2.0.1"><link rel="stylesheet" type="text/css" href="/css/highlight.css?v=2.0.1"><link rel="Shortcut Icon" href="/favicon.ico"><link rel="bookmark" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"><link rel="alternate" type="application/atom+xml" href="/atom.xml"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">Rabbitmq（五）－Routing</h1><a id="logo" href="/.">翁英健的博客</a><p class="description">subtitle</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div><div id="search-form"><div id="result-mask" class="hide"></div><label><input id="search-key" type="text" autocomplete="off" placeholder="请输入关键字..."></label><div id="result-wrap" class="hide"><div id="search-result"></div></div><div class="hide"><template id="search-tpl"><div class="item"><a href="/{path}" title="{title}"><div class="title">{title}</div><div class="time">{date}</div><div class="tags">{tags}</div></a></div></template></div></div></div><div id="layout" class="layout-g"><div class="layout-l"><div class="content_container"><div class="post"><h1 class="post-title">Rabbitmq（五）－Routing</h1><div class="post-meta"><a href="/2016/01/01/rabbitmq-routing/#comments" class="comment-count"></a><p><span class="date">Jan 01, 2016</span><span><a href="/categories/blog/" class="category">blog</a></span><span><i id="busuanzi_container_page_pv"><i id="busuanzi_value_page_pv"></i><i>点击</i></i></span></p></div><div class="post-content"><p>翻译自：<a href="https://www.rabbitmq.com/tutorials/tutorial-four-java.html" target="_blank" rel="noopener">https://www.rabbitmq.com/tutorials/tutorial-four-java.html</a><br>整理过的源代码(java-maven,workqueues-package)：<a href="https://github.com/wengyingjian/rabbitmq-tutorial.git" target="_blank" rel="noopener">https://github.com/wengyingjian/rabbitmq-tutorial.git</a>  </p>
+<h3 id="订阅-发布"><a href="#订阅-发布" class="headerlink" title="订阅/发布"></a>订阅/发布</h3><p>(通过java客户端实现)  </p>
+<p>在<a href="http://wengyingjian.github.io/2015/12/31/rabbitmq-publish-subscribe/" target="_blank" rel="noopener">前面的教程</a>中我们完成了一个简单的日志输出系统，实现了将消息广播给多个订阅者的功能。  </p>
+<p>在本篇教程中，我们在之前的基础上添加一些有趣的特性－－让订阅着可以选择只收到其中一部分的消息。举个例子：我们向屏幕输出所有的日志信息的同时，选择把错误的信息保存到硬盘上。  </p>
+<h3 id="绑定"><a href="#绑定" class="headerlink" title="绑定"></a>绑定</h3><p>在之前的例子中，已经有用过绑定了，代码如下：</p>
+<pre><code>channel.queueBind(queueName, EXCHANGE_NAME, &quot;&quot;);
+</code></pre><p>“绑定”其实就是交换机与队列的一个对应关系。也可以这样理解：某个队列只对它绑定了的路由器过来的信息感兴趣。  </p>
+<p>绑定需要一个额外的<code>routingKey</code>参数，为了避免与<code>basic_publish</code>产生混淆，下面就称它为<code>binding key</code>。下面看下<code>binding key</code>是如何创建的：</p>
+<pre><code>channel.queueBind(queueName, EXCHANGE_NAME, &quot;black&quot;);
+</code></pre><p><code>binding key</code>作用还得取决于交换机，因为有的交换机回去寻找对于<code>binding key</code>的队列，而我们之前用的例子（fanout类型的交换机）根据无视这个值。  </p>
+<h3 id="直接交换"><a href="#直接交换" class="headerlink" title="直接交换"></a>直接交换</h3><p>与之前日志输出系统相比较，现在要做的就是实现一个消息的过滤器，通过它们各自的需求来过滤指定类型的消息。还是上面的例子：我们需要通过过滤得到日志中是错误的消息，把它们给写到硬盘上，这样可以避免太多普通日志来浪费硬盘的空间。  </p>
+<p>之前用的是<code>fanout</code>交换机，这种交换机只能处理一些简单的广播事件，不够灵活。  </p>
+<p>利用图示解决方案：<br><img src="https://www.rabbitmq.com/img/tutorials/direct-exchange.png" alt=""><br>这里交换机X的类型是<code>direct</code>的，它绑定了2个队列：第一个队列Q1是以<code>binding key=orange</code>的设置绑定的；第二个队列Q2是以<code>binding key=black+green</code>的设置绑定的。  </p>
+<p>这样子设定的话，如果设置routing key为<code>orange</code>，那么就会路由到Q1，如果设置routing key为<code>black</code>或是<code>green</code>都会路由到Q2。其它的消息那就都被丢弃了。  </p>
+<h3 id="多绑定"><a href="#多绑定" class="headerlink" title="多绑定"></a>多绑定</h3><p><img src="https://www.rabbitmq.com/img/tutorials/direct-exchange-multiple.png" alt=""><br>一个binding key绑定多个队列也是被允许的。在这个案例中，我们要是再给交换机X添加一个绑定到Q1的<code>binding key=black</code>，这样达到的效果就更上篇里面的广播类似了：一个<code>routing key=black</code>的消息过来了，那么Q1，Q2都会收到。  </p>
+<h3 id="生产者"><a href="#生产者" class="headerlink" title="生产者"></a>生产者</h3><p>综上所述，我们只需要多加一个<code>routing key</code>参数，这样消费者就能够接收到它们希望接受到的消息了。  </p>
+<p>首先，创建一个路由器：  </p>
+<pre><code>channel.exchangeDeclare(EXCHANGE_NAME, &quot;direct&quot;);
+</code></pre><p>然后，准备消息的发送：</p>
+<pre><code>channel.basicPublish(EXCHANGE_NAME, severity, null, message.getBytes());
+</code></pre><p>为了简化，就把<code> severity </code>当做是 ‘info’, ‘warning’, ‘error’这几个级别。  </p>
+<h3 id="消费者"><a href="#消费者" class="headerlink" title="消费者"></a>消费者</h3><p>消费者代码与之前的就只有一个不同点：需要根据日志的级别<code> severity </code>来来绑定具体的队列。  </p>
+<pre><code>String queueName = channel.queueDeclare().getQueue();
+
+for(String severity : argv){    
+  channel.queueBind(queueName, EXCHANGE_NAME, severity);
+}
+</code></pre><h3 id="代码"><a href="#代码" class="headerlink" title="代码"></a>代码</h3><p><img src="https://www.rabbitmq.com/img/tutorials/python-four.png" alt="">  </p>
+<h5 id="生产者-1"><a href="#生产者-1" class="headerlink" title="生产者"></a>生产者</h5><p><a href="https://github.com/rabbitmq/rabbitmq-tutorials/blob/master/java/EmitLogDirect.java" target="_blank" rel="noopener">EmitLogDirect.java</a>  </p>
+<pre><code>public class EmitLogDirect {
+
+    private static final String EXCHANGE_NAME = &quot;direct_logs&quot;;
+
+    public static void main(String[] argv)
+                  throws java.io.IOException {
+
+        ConnectionFactory factory = new ConnectionFactory();
+        factory.setHost(&quot;localhost&quot;);
+        Connection connection = factory.newConnection();
+        Channel channel = connection.createChannel();
+
+        channel.exchangeDeclare(EXCHANGE_NAME, &quot;direct&quot;);
+
+        String severity = getSeverity(argv);
+        String message = getMessage(argv);
+
+        channel.basicPublish(EXCHANGE_NAME, severity, null, message.getBytes());
+        System.out.println(&quot; [x] Sent &apos;&quot; + severity + &quot;&apos;:&apos;&quot; + message + &quot;&apos;&quot;);
+
+        channel.close();
+        connection.close();
+    }
+    //..
+}
+</code></pre><h5 id="消费者-1"><a href="#消费者-1" class="headerlink" title="消费者"></a>消费者</h5><p><a href="https://github.com/rabbitmq/rabbitmq-tutorials/blob/master/java/ReceiveLogsDirect.java" target="_blank" rel="noopener">ReceiveLogsDirect.java</a>  </p>
+<pre><code>import com.rabbitmq.client.*;
+
+import java.io.IOException;
+
+public class ReceiveLogsDirect {
+
+  private static final String EXCHANGE_NAME = &quot;direct_logs&quot;;
+
+  public static void main(String[] argv) throws Exception {
+    ConnectionFactory factory = new ConnectionFactory();
+    factory.setHost(&quot;localhost&quot;);
+    Connection connection = factory.newConnection();
+    Channel channel = connection.createChannel();
+
+    channel.exchangeDeclare(EXCHANGE_NAME, &quot;direct&quot;);
+    String queueName = channel.queueDeclare().getQueue();
+
+    if (argv.length &lt; 1){
+      System.err.println(&quot;Usage: ReceiveLogsDirect [info] [warning] [error]&quot;);
+      System.exit(1);
+    }
+
+    for(String severity : argv){
+      channel.queueBind(queueName, EXCHANGE_NAME, severity);
+    }
+    System.out.println(&quot; [*] Waiting for messages. To exit press CTRL+C&quot;);
+
+    Consumer consumer = new DefaultConsumer(channel) {
+      @Override
+      public void handleDelivery(String consumerTag, Envelope envelope,
+                                 AMQP.BasicProperties properties, byte[] body) throws IOException {
+        String message = new String(body, &quot;UTF-8&quot;);
+        System.out.println(&quot; [x] Received &apos;&quot; + envelope.getRoutingKey() + &quot;&apos;:&apos;&quot; + message + &quot;&apos;&quot;);
+      }
+    };
+    channel.basicConsume(queueName, true, consumer);
+  }
+}
+</code></pre><p><br><br><br>————翁英健</p>
+<p>本文地址：<a href="http://wengyingjian.github.io/2016/01/01/rabbitmq-routing/" target="_blank" rel="noopener">http://wengyingjian.github.io/2016/01/01/rabbitmq-routing/</a></p>
+<p>-End-</p>
+<hr>
+</div><div class="tags"><a href="/tags/rabbitmq/">rabbitmq</a><a href="/tags/消息队列/">消息队列</a></div><div class="post-share"><div class="bdsharebuttonbox"><span style="float:left;line-height: 28px;height: 28px;font-size:16px;font-weight:blod">分享到：</span><a href="#" data-cmd="more" class="bds_more"></a><a href="#" data-cmd="mshare" title="分享到一键分享" class="bds_mshare"></a><a href="#" data-cmd="fbook" title="分享到Facebook" class="bds_fbook"></a><a href="#" data-cmd="twi" title="分享到Twitter" class="bds_twi"></a><a href="#" data-cmd="linkedin" title="分享到linkedin" class="bds_linkedin"></a><a href="#" data-cmd="youdao" title="分享到有道云笔记" class="bds_youdao"></a><a href="#" data-cmd="evernotecn" title="分享到印象笔记" class="bds_evernotecn"></a><a href="#" data-cmd="weixin" title="分享到微信" class="bds_weixin"></a><a href="#" data-cmd="qzone" title="分享到QQ空间" class="bds_qzone"></a><a href="#" data-cmd="tsina" title="分享到新浪微博" class="bds_tsina"></a></div></div><div class="post-nav"><a href="/2016/01/02/rabbitmq-topics/" class="pre">Rabbitmq（六）－Topics</a><a href="/2015/12/31/java-performance-jvm/" class="next">java性能优化（三）－JVM原理回顾</a></div><div id="comments"></div></div></div></div><div class="layout-r"><div id="sidebar"><div class="search-pla"></div><div id="toc" class="widget"><div class="widget-title"><i class="fa fa-fei">文章目录</i></div><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#订阅-发布"><span class="toc-text">订阅/发布</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#绑定"><span class="toc-text">绑定</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#直接交换"><span class="toc-text">直接交换</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#多绑定"><span class="toc-text">多绑定</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#生产者"><span class="toc-text">生产者</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#消费者"><span class="toc-text">消费者</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#代码"><span class="toc-text">代码</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#生产者-1"><span class="toc-text">生产者</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#消费者-1"><span class="toc-text">消费者</span></a></li></ol></li></ol></div><div class="widget"><div class="widget-title"><i class="fa fa-xie"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/11/28/idea-license/">IDEA 2016 最新版 激活 破解</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/03/10/nginx-usage-list/">Nginx－虚拟主机、反向代理、负载均衡</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/02/20/wechat-develop/">微信公众号开发</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/02/08/server-gitlab-init/">Centos7 Gitlab 环境搭建</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/02/06/spring-source-load-xml/">Spring源码（一）－读取xml配置</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/02/04/maven-archetype-bugfix/">Maven Archetype编写（二）</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/01/31/maven-archetype-init/">Maven Archetype编写（一）</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/01/23/maven-autoconf-fix/">Maven Autoconf打包问题</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/01/19/docker-what-is/">Docker是什么</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/01/10/nginx-note-reverse-proxy/">Nginx学习笔记（三）－Nginx作为反向代理</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-gui"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/blog/">blog</a><span class="category-list-count">49</span></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-biao"> 标签</i></div><div class="tagcloud"><a href="/tags/性能/" style="font-size: 15px;">性能</a> <a href="/tags/github/" style="font-size: 15px;">github</a> <a href="/tags/helloWorld/" style="font-size: 15px;">helloWorld</a> <a href="/tags/域名/" style="font-size: 15px;">域名</a> <a href="/tags/linux/" style="font-size: 15px;">linux</a> <a href="/tags/随笔/" style="font-size: 15px;">随笔</a> <a href="/tags/docker/" style="font-size: 15px;">docker</a> <a href="/tags/rabbitmq/" style="font-size: 15px;">rabbitmq</a> <a href="/tags/消息队列/" style="font-size: 15px;">消息队列</a> <a href="/tags/hexo/" style="font-size: 15px;">hexo</a> <a href="/tags/自动化工具/" style="font-size: 15px;">自动化工具</a> <a href="/tags/java/" style="font-size: 15px;">java</a> <a href="/tags/404/" style="font-size: 15px;">404</a> <a href="/tags/idea/" style="font-size: 15px;">idea</a> <a href="/tags/部署/" style="font-size: 15px;">部署</a> <a href="/tags/jvm/" style="font-size: 15px;">jvm</a> <a href="/tags/jekyll/" style="font-size: 15px;">jekyll</a> <a href="/tags/内存/" style="font-size: 15px;">内存</a> <a href="/tags/服务器/" style="font-size: 15px;">服务器</a> <a href="/tags/spring/" style="font-size: 15px;">spring</a> <a href="/tags/jenkins/" style="font-size: 15px;">jenkins</a> <a href="/tags/git/" style="font-size: 15px;">git</a> <a href="/tags/maven/" style="font-size: 15px;">maven</a> <a href="/tags/nginx/" style="font-size: 15px;">nginx</a> <a href="/tags/缓存/" style="font-size: 15px;">缓存</a> <a href="/tags/redis/" style="font-size: 15px;">redis</a> <a href="/tags/hudson/" style="font-size: 15px;">hudson</a> <a href="/tags/ubuntu/" style="font-size: 15px;">ubuntu</a> <a href="/tags/tomcat/" style="font-size: 15px;">tomcat</a> <a href="/tags/nexus/" style="font-size: 15px;">nexus</a> <a href="/tags/ssh/" style="font-size: 15px;">ssh</a> <a href="/tags/商品超卖/" style="font-size: 15px;">商品超卖</a> <a href="/tags/数据库/" style="font-size: 15px;">数据库</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-archive"> 归档</i></div><ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">十一月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">三月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">二月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">一月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">十二月 2015</a></li></ul></div></div></div></div><a id="totop" href="#top"></a><div id="footer"><div class="footer-info"><p><a href="/baidusitemap.xml">Baidu Site Haritası</a> |  <a href="/atom.xml">订阅</a> |  <a href="/about/">关于</a></p><p>本站总访问量：<i id="busuanzi_container_site_pv"><i id="busuanzi_value_site_pv"></i></i>次</p><p><span> Copyright &copy;<a href="/." rel="nofollow">authorwyj.</a></span><span> Theme by<a rel="nofollow" target="_blank" href="https://github.com/chaooo/hexo-theme-BlueLake"> BlueLake.</a></span><span> Count by<a href="http://busuanzi.ibruce.info/"> busuanzi.</a></span><span> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a></span></p></div></div></div><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><script type="text/javascript" src="/js/search.json.js?v=2.0.1"></script><script type="text/javascript" src="/js/toctotop.js?v=2.0.1" async></script><script>window._bd_share_config={"common":{"bdSnsKey":{},"bdText":"","bdMini":"2","bdMiniList":["mshare","weixin","tsina","qzone","linkedin","fbook","twi","print","renren","sqq","evernotecn","bdysc","tqq","tqf","bdxc","kaixin001","tieba","douban","bdhome","thx","ibaidu","meilishuo","mogujie","diandian","huaban","duitang","hx","fx","youdao","sdo","qingbiji","people","xinhua","mail","isohu","yaolan","wealink","ty","iguba","h163","copy"],"bdPic":"","bdStyle":"1","bdSize":"16"},"share":{},"image":{"viewList":["tsina","qzone","weixin","fbook","twi","linkedin","youdao","evernotecn","mshare"],"viewText":"分享到：","viewSize":"16"},"selectShare":{"bdContainerClass":null,"bdSelectMiniList":["tsina","qzone","weixin","fbook","twi","linkedin","youdao","evernotecn","mshare"]}};with(document)0[(getElementsByTagName('head')[0]||head).appendChild(createElement('script')).src='http://bdimg.share.baidu.com/static/api/js/share.js?v=89860593.js?cdnversion='+~(-new Date()/36e5)];
+</script></body></html>

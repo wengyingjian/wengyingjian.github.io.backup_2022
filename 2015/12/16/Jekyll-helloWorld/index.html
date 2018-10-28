@@ -1,0 +1,193 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta name="generator" content="Hexo 3.8.0"><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="description"><meta name="keywords" content="keywords1,keywords2,"><title>如何在Github上写博客（一）－读懂 | 翁英健的博客</title><link rel="stylesheet" type="text/css" href="//fonts.neworld.org/css?family=Source+Code+Pro"><link rel="stylesheet" type="text/css" href="/css/style.css?v=2.0.1"><link rel="stylesheet" type="text/css" href="/css/highlight.css?v=2.0.1"><link rel="Shortcut Icon" href="/favicon.ico"><link rel="bookmark" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"><link rel="alternate" type="application/atom+xml" href="/atom.xml"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">如何在Github上写博客（一）－读懂</h1><a id="logo" href="/.">翁英健的博客</a><p class="description">subtitle</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div><div id="search-form"><div id="result-mask" class="hide"></div><label><input id="search-key" type="text" autocomplete="off" placeholder="请输入关键字..."></label><div id="result-wrap" class="hide"><div id="search-result"></div></div><div class="hide"><template id="search-tpl"><div class="item"><a href="/{path}" title="{title}"><div class="title">{title}</div><div class="time">{date}</div><div class="tags">{tags}</div></a></div></template></div></div></div><div id="layout" class="layout-g"><div class="layout-l"><div class="content_container"><div class="post"><h1 class="post-title">如何在Github上写博客（一）－读懂</h1><div class="post-meta"><a href="/2015/12/16/Jekyll-helloWorld/#comments" class="comment-count"></a><p><span class="date">Dec 16, 2015</span><span><a href="/categories/blog/" class="category">blog</a></span><span><i id="busuanzi_container_page_pv"><i id="busuanzi_value_page_pv"></i><i>点击</i></i></span></p></div><div class="post-content"><h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><blockquote>
+<p>之前为了高逼格（就是在github上写博客），可费了一番周折。</p>
+<p>网上的教程一半是从自己创建项目开始的，但是我觉得这个方法门槛太高，因为我到现在也没有把Jekyll等必要的环境安装好（就算装好了后面也不一定容易呢）。那windows用户就更难玩了。</p>
+<p>还有另外的一半是fork一下成品的github repository，然后没有然后了。</p>
+<p>我就是fork了以后，能够访问到url，但是自己要写博客呢，怎么办？</p>
+<p>所以，我把这几天熟悉到的一些东西分享一下，希望能够帮助到想要在github上写博客的朋友，尽可能少走点弯路嘛。</p>
+<p>如果哪里说错了，还有劳在评论中提出。</p>
+</blockquote>
+<h2 id="HelloWorld"><a href="#HelloWorld" class="headerlink" title="HelloWorld"></a>HelloWorld</h2><h3 id="步骤"><a href="#步骤" class="headerlink" title="步骤"></a>步骤</h3><blockquote>
+<p>1.fork一个<a href="https://github.com/wengyingjian/template.github.io.git" target="_blank" rel="noopener">现成的仓库</a>&lt;–点它，点它！</p>
+<p>2.点击”Settings”，修改 Repository name。比如我的github用户名为wengyingjain，就把仓库名改为wengyingjian.github.io.把它改成你自己的名字。</p>
+<p>3.保存以后即可访问：<a href="http://wengyingjian.github.io" target="_blank" rel="noopener">wengyingjian.github.io</a></p>
+</blockquote>
+<p>你也可以看这里:<a href="https://pages.github.com/" target="_blank" rel="noopener">https://pages.github.com/</a>，选择”User or organization site”，然后跟着提示来。</p>
+<h5 id="2015-12-29补充"><a href="#2015-12-29补充" class="headerlink" title="2015-12-29补充"></a>2015-12-29补充</h5><p>在文件的根目录有个叫做“CNAME”的文件。里面放的是域名，不需要<code>http://</code>。<br>这个里面的值一定要改成与自己的域名相匹配，一般是<code>yourname.github.io</code>，否则会报404。  </p>
+<p>另外，如果你希望github page能够绑定到自己的域名的时候，需要将CNAME里面的值改为自己的域名。<br>关于绑定域名参见： <a href="http://wengyingjian.github.io/2015/12/29/Jekyll-bind-site" target="_blank" rel="noopener">http://wengyingjian.github.io/2015/12/29/Jekyll-bind-site</a></p>
+<h3 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h3><blockquote>
+<p>这里主要讲到了两点：</p>
+<p>1.repository name要设置对，xxx.github.io</p>
+<p>2.访问xxx.github.io的时候进的是 index.html .</p>
+</blockquote>
+<h2 id="看懂文件目录是干啥的"><a href="#看懂文件目录是干啥的" class="headerlink" title="看懂文件目录是干啥的"></a>看懂文件目录是干啥的</h2><p>这里先贴一个关于文件目录说明的地址：<a href="http://beiyuu.com/github-pages" target="_blank" rel="noopener">http://beiyuu.com/github-pages</a>，往下拉到“Jekyll模版系统”。</p>
+<p>万一你懒得点开呢？所以我在这里结合网上的，自己再“添油加醋”的说几句。</p>
+<blockquote>
+<p><strong>1.文件目录：</strong><br>   
+>
+    |-- _config.yml
+    |-- _includes
+    |-- _layouts
+    |   |-- default.html
+    |   `-- post.html
+    |-- _posts
+    |   |-- 2007-10-29-why-every-programmer-should-play-nethack.textile
+    |   `-- 2009-04-26-barcamp-boston-4-roundup.textile
+    |-- _site
+    `-- index.html
+>	
+>	</p>
+<p>不是这样的，也应该基本是这样的。</p>
+<p><br><br><strong>2.各个文件的简要说明</strong></p>
+<p><strong>_config.yml</strong></p>
+<p>配置文件你懂的，就是存放一些不用看代码改着方便的东西，设置好之后就不用关心了。</p>
+<p><strong>_includes</strong></p>
+<p>可以用来存放一些小的可复用的模块，方便通过{-% include file %-}进行引用(请无视”-“)。这条命令会调用_includes/file文件。</p>
+<p><strong>_layouts</strong></p>
+<p>这是模板文件存放的位置。其实就是定义：首页长啥样的；一级页面长啥样的；二级页面长啥样的。</p>
+<p><strong>_posts</strong></p>
+<p>博客放在这个目录，自动就能够访问的到。<strong>不过他的命名有严格的规定，必须是yyyy-MM-dd-title-subtitle.MARKUP格式</strong>，比如2015-12-16-Jekyll-helloWorld.md(这里用md也行)。</p>
+<p><strong>_site</strong></p>
+<p>这个是Jekyll生成的最终的文档，不用去关心。最好把他放在你的.gitignore文件中忽略它。</p>
+<p><strong>其他文件夹</strong></p>
+<p>你可以创建任何的文件夹，在根目录下面也可以创建任何文件，假设你创建了project文件夹，下面有一个github-pages.md的文件，那么你就可以通过yoursite.com/project/github-pages访问的到，如果你是使用一级域名的话。文件后缀可以是.html或者markdown或者textile。这里还有很多的例子：<a href="https://github.com/jekyll/jekyll/wiki/Sites" target="_blank" rel="noopener">https://github.com/jekyll/jekyll/wiki/Sites</a></p>
+</blockquote>
+<h2 id="稍微看下源文件"><a href="#稍微看下源文件" class="headerlink" title="稍微看下源文件"></a>稍微看下源文件</h2><p>最重要的是方法!</p>
+<p>我捣鼓了几天，发现了解它最好的方法就是一边看源文件，一边进入页面，右键“源代码”。</p>
+<h3 id="下面跟着我来看下"><a href="#下面跟着我来看下" class="headerlink" title="下面跟着我来看下"></a>下面跟着我来看下</h3><blockquote>
+<p>1.<strong>入口是index.html，所以我们就从index.html开始</strong></p>
+
+> 
+    ---
+    layout: page //这里找的是/_layouts/page.html,用的是page的模版。
+    description: "From 2014-11-23 To Now" // 查看页面源代码可知这个就是head中的一个说明
+    ---
+>	
+>
+    {% for post in paginator.posts %} //这里是个for循环，遍历_posts中的所有文件，显示出来呗
+    <div class="post-preview">
+	    <a href="{{ post.url | prepend: site.baseurl }}">
+	        <h2 class="post-title">            
+	            {{ post.title }}
+	        </h2>
+	        {% if post.subtitle %} //title,subtitle上面提过了。
+	        <h3 class="post-subtitle">
+	            {{ post.subtitle }}
+	        </h3>
+	        {% endif %}
+	        <div class="post-content-preview">
+	            {{ post.content | strip_html | truncate:150 }}
+	        </div>
+	    </a>
+	    <p class="post-meta">Posted by {% if post.author %}{{ post.author }}{% else %}{{ site.title }}{% endif %} on {{ post.date | date: "%B %-d, %Y" }}</p>
+	</div>
+>	
+	<hr>
+	{% endfor %}
+>	
+	<!-- Pager -->
+	{% if paginator.total_pages > 1 %} //这里根据页数判断是否显示“上一页”，“下一页”
+	<ul class="pager">
+	    {% if paginator.previous_page %}
+	    <li class="previous">
+	        <a href="{{ paginator.previous_page_path | prepend: site.baseurl | replace: '//', '/' }}">&larr; Newer Posts</a>
+	    </li>
+	    {% endif %}
+	    {% if paginator.next_page %}
+	    <li class="next">
+	        <a href="{{ paginator.next_page_path | prepend: site.baseurl | replace: '//', '/' }}">Older Posts &rarr;</a>
+	    </li>
+	    {% endif %}
+	</ul>
+	{% endif %}
+	
+
+</blockquote>
+<blockquote>
+<p>index.html基本就是这么个样子的，但是在实际的页面中，html代码比这个要丰富的多。</p>
+<p>所以下面需要请出/_layouts/page.html,上面提到了index.html用到了这个模版，还记得吧！</p>
+<p><br><br>2.<strong>/_layouts/page.html</strong></p>
+<p>这里我就贴一下前三行，后面的都是一些html的head，css，js等东西，你们都懂得。</p>
+
+>
+		---
+		layout: default
+		---   
+>	
+>	
+>
+<p>page又用到了/layouts/default.html，这个层层继承啊，那我们再去看看default把。</p>
+<p>顺带一句：post也是用到了/layouts/default.html,同样的道理。</p>
+<p><br><br>3.<strong>/layouts/default.html</strong><br>
+> 
+	<!DOCTYPE html>
+	<html lang="en">
+>
+	{% include head.html %} //这里用到了之前之前说的，把/_include/head.html拿过来了。
+	//head.html一看名字就知道，写的是一些html中head通用的：link,meta等
+>		
+	<body ontouchstart="">
+		<div id="back-top">
+	            <a href="#top" title="回到顶部"></a>
+	    </div>
+>	
+	    {% include nav.html %} //然后是把/_include/nav.html拿过来了，navigate导航呗，
+	    //瞅瞅右上角的HOME,TAG等东西，就是它们！
+>	
+	    {{ content }} // 中间放内容
+>	
+	    {% include footer.html %} //下面再放一些装饰，这里是facebook,weibo等联系方式。
+>	
+	</body>
+>	
+	</html>
+>	
+><br><br><br>4.<strong>／includes/footer.html</strong></p>
+<p>这里面有很多代码，就截一个主要的看下</p>
+
+> 
+	{% if site.twitter_username %} //中间所有的内容是否出现取决于这个if是否同意。
+	<li>
+	 <a href="https://twitter.com/{{ site.twitter_username }}" target="_blank" rel="noopener">
+	  <span class="fa-stack fa-lg">
+	   <i class="fa fa-circle fa-stack-2x"></i>
+	   <i class="fa fa-twitter fa-stack-1x fa-inverse"></i>
+	  </span>
+	 </a>
+	</li>
+	{% endif %}
+>	
+>
+<p>这里用到了2个引用的变量：site.twitter_username、site.twitter_username。</p>
+<p>这些东西都是从哪拿的呢？_config.yml!</p>
+<p><br><br>5.<strong>_config.yml</strong></p>
+<p>我不说了，都看得懂</p>
+<p><br><br>6.<strong>／includes/nav.html</strong></p>
+<p>打开文件一看，也没看出啥啊。</p>
+<p>但是我们要相信真理，相信右上角的导航是由这个文件生出来的。</p>
+<p>仔细看，发现里面也有一个for循环<br>
+> 
+	{% for page in site.pages %}{% if page.title %}
+	 <li>
+	   <a href="{{ page.url | prepend: site.baseurl }}">{{ page.title }}</a>
+	 </li>
+	{% endif %}{% endfor %}
+>
+><br>没错了就是它，我们在右上角看到的是：HOME\ABOUT\ARCHIVE\TAGS，正好在跟目录也有对应的几个.md文件。</p>
+<p>所以说，site.pages指的应该就是跟目录下的.md文件。</p>
+<p>想起了各种内置：jsp内置对象、maven内置变量。。。</p>
+</blockquote>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>我所看到的、会的，基本都说了。<br>希望读者看下来，能够对Jekyll模版有个大概的认知。</p>
+<p>现在我们已经读懂了它，下一步就可以去修改它了，让它变成自己的博客。</p>
+<p>对了，干货献上：</p>
+<p><a href="http://jekyllthemes.org/" target="_blank" rel="noopener">http://jekyllthemes.org/</a></p>
+<p>各种主题随便挑，不过能不能用，还得看造化。</p>
+<p>————翁英健</p>
+<p>本文地址：<a href="http://wengyingjian.github.io/2015/12/16/Jekyll-helloWorld" target="_blank" rel="noopener">http://wengyingjian.github.io/2015/12/16/Jekyll-helloWorld</a></p>
+<p>-End-</p>
+<hr>
+</div><div class="tags"><a href="/tags/github/">github</a><a href="/tags/jekyll/">jekyll</a><a href="/tags/helloWorld/">helloWorld</a></div><div class="post-share"><div class="bdsharebuttonbox"><span style="float:left;line-height: 28px;height: 28px;font-size:16px;font-weight:blod">分享到：</span><a href="#" data-cmd="more" class="bds_more"></a><a href="#" data-cmd="mshare" title="分享到一键分享" class="bds_mshare"></a><a href="#" data-cmd="fbook" title="分享到Facebook" class="bds_fbook"></a><a href="#" data-cmd="twi" title="分享到Twitter" class="bds_twi"></a><a href="#" data-cmd="linkedin" title="分享到linkedin" class="bds_linkedin"></a><a href="#" data-cmd="youdao" title="分享到有道云笔记" class="bds_youdao"></a><a href="#" data-cmd="evernotecn" title="分享到印象笔记" class="bds_evernotecn"></a><a href="#" data-cmd="weixin" title="分享到微信" class="bds_weixin"></a><a href="#" data-cmd="qzone" title="分享到QQ空间" class="bds_qzone"></a><a href="#" data-cmd="tsina" title="分享到新浪微博" class="bds_tsina"></a></div></div><div class="post-nav"><a href="/2015/12/16/essay-helloWorld/" class="pre">开篇</a><a href="/2015/12/10/redis-learn-install/" class="next">Redis学习（一）－安装与配置</a></div><div id="comments"></div></div></div></div><div class="layout-r"><div id="sidebar"><div class="search-pla"></div><div id="toc" class="widget"><div class="widget-title"><i class="fa fa-fei">文章目录</i></div><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#前言"><span class="toc-text">前言</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#HelloWorld"><span class="toc-text">HelloWorld</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#步骤"><span class="toc-text">步骤</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#2015-12-29补充"><span class="toc-text">2015-12-29补充</span></a></li></ol></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#小结"><span class="toc-text">小结</span></a></li></ol><li class="toc-item toc-level-2"><a class="toc-link" href="#看懂文件目录是干啥的"><span class="toc-text">看懂文件目录是干啥的</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#稍微看下源文件"><span class="toc-text">稍微看下源文件</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#下面跟着我来看下"><span class="toc-text">下面跟着我来看下</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#undefined"><span class="toc-text">            
+	            {{ post.title }}
+	        </span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#undefined"><span class="toc-text">
+	            {{ post.subtitle }}
+	        </span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#总结"><span class="toc-text">总结</span></a></li></div><div class="widget"><div class="widget-title"><i class="fa fa-xie"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/11/28/idea-license/">IDEA 2016 最新版 激活 破解</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/03/10/nginx-usage-list/">Nginx－虚拟主机、反向代理、负载均衡</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/02/20/wechat-develop/">微信公众号开发</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/02/08/server-gitlab-init/">Centos7 Gitlab 环境搭建</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/02/06/spring-source-load-xml/">Spring源码（一）－读取xml配置</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/02/04/maven-archetype-bugfix/">Maven Archetype编写（二）</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/01/31/maven-archetype-init/">Maven Archetype编写（一）</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/01/23/maven-autoconf-fix/">Maven Autoconf打包问题</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/01/19/docker-what-is/">Docker是什么</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/01/10/nginx-note-reverse-proxy/">Nginx学习笔记（三）－Nginx作为反向代理</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-gui"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/blog/">blog</a><span class="category-list-count">49</span></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-biao"> 标签</i></div><div class="tagcloud"><a href="/tags/性能/" style="font-size: 15px;">性能</a> <a href="/tags/github/" style="font-size: 15px;">github</a> <a href="/tags/helloWorld/" style="font-size: 15px;">helloWorld</a> <a href="/tags/域名/" style="font-size: 15px;">域名</a> <a href="/tags/linux/" style="font-size: 15px;">linux</a> <a href="/tags/随笔/" style="font-size: 15px;">随笔</a> <a href="/tags/docker/" style="font-size: 15px;">docker</a> <a href="/tags/rabbitmq/" style="font-size: 15px;">rabbitmq</a> <a href="/tags/消息队列/" style="font-size: 15px;">消息队列</a> <a href="/tags/hexo/" style="font-size: 15px;">hexo</a> <a href="/tags/自动化工具/" style="font-size: 15px;">自动化工具</a> <a href="/tags/java/" style="font-size: 15px;">java</a> <a href="/tags/404/" style="font-size: 15px;">404</a> <a href="/tags/idea/" style="font-size: 15px;">idea</a> <a href="/tags/部署/" style="font-size: 15px;">部署</a> <a href="/tags/jvm/" style="font-size: 15px;">jvm</a> <a href="/tags/jekyll/" style="font-size: 15px;">jekyll</a> <a href="/tags/内存/" style="font-size: 15px;">内存</a> <a href="/tags/服务器/" style="font-size: 15px;">服务器</a> <a href="/tags/spring/" style="font-size: 15px;">spring</a> <a href="/tags/jenkins/" style="font-size: 15px;">jenkins</a> <a href="/tags/git/" style="font-size: 15px;">git</a> <a href="/tags/maven/" style="font-size: 15px;">maven</a> <a href="/tags/nginx/" style="font-size: 15px;">nginx</a> <a href="/tags/缓存/" style="font-size: 15px;">缓存</a> <a href="/tags/redis/" style="font-size: 15px;">redis</a> <a href="/tags/hudson/" style="font-size: 15px;">hudson</a> <a href="/tags/ubuntu/" style="font-size: 15px;">ubuntu</a> <a href="/tags/tomcat/" style="font-size: 15px;">tomcat</a> <a href="/tags/nexus/" style="font-size: 15px;">nexus</a> <a href="/tags/ssh/" style="font-size: 15px;">ssh</a> <a href="/tags/商品超卖/" style="font-size: 15px;">商品超卖</a> <a href="/tags/数据库/" style="font-size: 15px;">数据库</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-archive"> 归档</i></div><ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">十一月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">三月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">二月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">一月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">十二月 2015</a></li></ul></div></div></div></div><a id="totop" href="#top"></a><div id="footer"><div class="footer-info"><p><a href="/baidusitemap.xml">Baidu Site Haritası</a> |  <a href="/atom.xml">订阅</a> |  <a href="/about/">关于</a></p><p>本站总访问量：<i id="busuanzi_container_site_pv"><i id="busuanzi_value_site_pv"></i></i>次</p><p><span> Copyright &copy;<a href="/." rel="nofollow">authorwyj.</a></span><span> Theme by<a rel="nofollow" target="_blank" href="https://github.com/chaooo/hexo-theme-BlueLake"> BlueLake.</a></span><span> Count by<a href="http://busuanzi.ibruce.info/"> busuanzi.</a></span><span> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a></span></p></div></div></div><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><script type="text/javascript" src="/js/search.json.js?v=2.0.1"></script><script type="text/javascript" src="/js/toctotop.js?v=2.0.1" async></script><script>window._bd_share_config={"common":{"bdSnsKey":{},"bdText":"","bdMini":"2","bdMiniList":["mshare","weixin","tsina","qzone","linkedin","fbook","twi","print","renren","sqq","evernotecn","bdysc","tqq","tqf","bdxc","kaixin001","tieba","douban","bdhome","thx","ibaidu","meilishuo","mogujie","diandian","huaban","duitang","hx","fx","youdao","sdo","qingbiji","people","xinhua","mail","isohu","yaolan","wealink","ty","iguba","h163","copy"],"bdPic":"","bdStyle":"1","bdSize":"16"},"share":{},"image":{"viewList":["tsina","qzone","weixin","fbook","twi","linkedin","youdao","evernotecn","mshare"],"viewText":"分享到：","viewSize":"16"},"selectShare":{"bdContainerClass":null,"bdSelectMiniList":["tsina","qzone","weixin","fbook","twi","linkedin","youdao","evernotecn","mshare"]}};with(document)0[(getElementsByTagName('head')[0]||head).appendChild(createElement('script')).src='http://bdimg.share.baidu.com/static/api/js/share.js?v=89860593.js?cdnversion='+~(-new Date()/36e5)];
+</script></body></html>

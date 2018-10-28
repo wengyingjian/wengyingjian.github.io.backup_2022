@@ -1,0 +1,111 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta name="generator" content="Hexo 3.8.0"><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="description"><meta name="keywords" content="keywords1,keywords2,"><title>Rabbitmq（三）－Work Queues | 翁英健的博客</title><link rel="stylesheet" type="text/css" href="//fonts.neworld.org/css?family=Source+Code+Pro"><link rel="stylesheet" type="text/css" href="/css/style.css?v=2.0.1"><link rel="stylesheet" type="text/css" href="/css/highlight.css?v=2.0.1"><link rel="Shortcut Icon" href="/favicon.ico"><link rel="bookmark" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"><link rel="alternate" type="application/atom+xml" href="/atom.xml"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">Rabbitmq（三）－Work Queues</h1><a id="logo" href="/.">翁英健的博客</a><p class="description">subtitle</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div><div id="search-form"><div id="result-mask" class="hide"></div><label><input id="search-key" type="text" autocomplete="off" placeholder="请输入关键字..."></label><div id="result-wrap" class="hide"><div id="search-result"></div></div><div class="hide"><template id="search-tpl"><div class="item"><a href="/{path}" title="{title}"><div class="title">{title}</div><div class="time">{date}</div><div class="tags">{tags}</div></a></div></template></div></div></div><div id="layout" class="layout-g"><div class="layout-l"><div class="content_container"><div class="post"><h1 class="post-title">Rabbitmq（三）－Work Queues</h1><div class="post-meta"><a href="/2015/12/30/rabbitmq-workqueues/#comments" class="comment-count"></a><p><span class="date">Dec 30, 2015</span><span><a href="/categories/blog/" class="category">blog</a></span><span><i id="busuanzi_container_page_pv"><i id="busuanzi_value_page_pv"></i><i>点击</i></i></span></p></div><div class="post-content"><p>翻译自：<a href="https://www.rabbitmq.com/tutorials/tutorial-two-java.html" target="_blank" rel="noopener">https://www.rabbitmq.com/tutorials/tutorial-two-java.html</a><br>整理过的源代码(java-maven,workqueues-package)：<a href="https://github.com/wengyingjian/rabbitmq-tutorial.git" target="_blank" rel="noopener">https://github.com/wengyingjian/rabbitmq-tutorial.git</a>  </p>
+<h2 id="Work-Queues"><a href="#Work-Queues" class="headerlink" title="Work Queues"></a>Work Queues</h2><p>(通过java客户端实现)  </p>
+<p><img src="https://www.rabbitmq.com/img/tutorials/python-two.png" alt=""><br>在<a href="http://wengyingjian.github.io/2015/12/30/rabbitmq-helloworld/" target="_blank" rel="noopener">第一篇教程</a>中我们写了从队列中发送和读取消息的程序。本篇我们将创建一个Work Queue来将消息分发给消费者，当然这里的环境是有多个消费者的。<br>使用Work Queue的主要目的是为了防止任务过于密集导致长时间的等待。取而代之的是我们把这些任务给编排好顺序，然后放着慢慢执行。我们把这个任务抽象为一个message来表示，然后再将message发送到queue当中。在后台运行的worker进程将会从queue中一个个取出任务，并且保证最终所有的任务都会被执行掉。当后台有多个worker进程的时候，这些任务由它们共同协作完成。<br>这个概念在web应用中是尤其有用的，因为我们不可能在极短的http请求中完成一些非常复杂的任务。</p>
+<h2 id="准备"><a href="#准备" class="headerlink" title="准备"></a>准备</h2><p>在上一篇教程中，我们发送一个一个内容为”Hello World!”的字符串消息。现在我们要发送一些代表着复杂的任务的消息，然而我们并没有啥复杂的任务，但是为了模仿的像，就用<code>Thread.sleep()</code>函数来代替。我们就用符号<code>.</code>在字符串中出现的次数来表示任务的复杂度。举个例子，一个虚拟的任务<code>Hello…</code>就需要花费3秒钟时间。  </p>
+<p>然后需要略微的修改一下<code>Send.java</code>文件，允许消息的输入能够从命令行中读取。该程序将会把任务自动放入到工作队列中，所以就给这个命名为<code>NewTask.java</code>吧。。 </p>
+<pre><code>String message = getMessage(argv);
+
+channel.basicPublish(&quot;&quot;, &quot;hello&quot;, null, message.getBytes());
+System.out.println(&quot; [x] Sent &apos;&quot; + message + &quot;&apos;&quot;);
+</code></pre><p>从命令行获取数据</p>
+<pre><code>private static String getMessage(String[] strings){
+    if (strings.length &lt; 1)
+        return &quot;Hello World!&quot;;
+    return joinStrings(strings, &quot; &quot;);
+}
+
+private static String joinStrings(String[] strings, String delimiter) {
+    int length = strings.length;
+    if (length == 0) return &quot;&quot;;
+    StringBuilder words = new StringBuilder(strings[0]);
+    for (int i = 1; i &lt; length; i++) {
+        words.append(delimiter).append(strings[i]);
+    }
+    return words.toString();
+}
+</code></pre><p>旧的<code>Recv.java</code>程序也同样需要一些改动：根据字符串中<code>.</code>符号模拟出执行任务所需的时间来会处理传递过来的任务，将它命名为<code>Worker.java</code>  </p>
+<pre><code>final Consumer consumer = new DefaultConsumer(channel) {
+  @Override
+  public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) throws IOException {
+    String message = new String(body, &quot;UTF-8&quot;);
+
+    System.out.println(&quot; [x] Received &apos;&quot; + message + &quot;&apos;&quot;);
+    try {
+      doWork(message);
+    } finally {
+      System.out.println(&quot; [x] Done&quot;);
+    }
+  }
+};
+channel.basicConsume(TASK_QUEUE_NAME, true, consumer);
+</code></pre><p>模拟执行时间：</p>
+<pre><code>private static void doWork(String task) throws InterruptedException {
+    for (char ch: task.toCharArray()) {
+        if (ch == &apos;.&apos;) Thread.sleep(1000);
+    }
+}
+</code></pre><h3 id="测试"><a href="#测试" class="headerlink" title="测试"></a>测试</h3><p>使用任务队列最大的好处之一就是他能够轻松将业务并行执行。比如说我们需要统计一个程序的后台日志，那么只需要将要统计的日志发送到队列，然后添加几个worker来处理完成这些任务即可。<br>首先，我们先将2个worker进程跑起来。<br>我这里用的是eclipse，所以右键<code>Worker.java</code>选择”Run As Java Application”即可,跑2次。<br><img src="http://images2015.cnblogs.com/blog/842598/201512/842598-20151230223626026-1949455151.png" alt=""></p>
+<p>两个程序控制台显示的应该都是一样的：<br><img src="http://images2015.cnblogs.com/blog/842598/201512/842598-20151230223756901-99292290.png" alt=""></p>
+<p>然后，在让<code>NewTask.java</code>制造一些任务出来。<br>同样的方法，run一次<code>NewTask.java</code>。<br>然后在设置run参数再跑一次，具体方法如下：</p>
+<ol>
+<li>选择”Run Configurations”<br><img src="http://images2015.cnblogs.com/blog/842598/201512/842598-20151230224050964-576242307.png" alt=""></li>
+<li>设置参数<br>左边选择”NewTask”这个类，右边选择”Arguments”，然后输入内容，为了防止手速过慢，多加几个点，一个点就是一秒。然后多运行几次，分别为task 2,3,4,5,6。。。<br><img src="http://images2015.cnblogs.com/blog/842598/201512/842598-20151230224217885-1608569744.png" alt=""></li>
+<li>消费者端打印的日志基本是这样的：<br><img src="http://images2015.cnblogs.com/blog/842598/201512/842598-20151230224456135-305709583.png" alt=""></li>
+</ol>
+<p>默认的情况下，RabbitMQ会把每个消息以序列化的形式发送下一个消费者。平均的来说，每个消费者会得到相同数量的消息。这种分发消息的机制叫做”round-robin”。</p>
+<h3 id="消息感知（消费者挂了咋整）"><a href="#消息感知（消费者挂了咋整）" class="headerlink" title="消息感知（消费者挂了咋整）"></a>消息感知（消费者挂了咋整）</h3><p>消费者拿到消息以后执行任务是需要时间的。那么，如果在执行的时候消费者程序挂了怎么办，这下这个任务可就失踪了啊。以我们目前的代码来看，一旦RabbitMQ将消息传送给消费者，那么这个消息就从队列内存中移除了。这种情况下，如果你把消费者进程给杀了，这个消息就消失了。总之，所有的这类从队列给到消费者，而消费者挂掉未能完成任务的消息都将失效，这是我们不想看到的。  </p>
+<p>我们想要达到的目的是，如果一个消费者挂掉了，而他手头的工作还没做完，那么由其它的消费者来代替他完成。总之任务必须完成。<br>为了达到这个目的，RabbitMQ支持消息感知。实现方式如下：如果消费者完成了某个任务，就给队列返回一个<code>ack</code>信号。当队列接收到这个返回的信号了以后，说明这个任务是完成了的，此时才将这个任务真正的从队列中移除。  </p>
+<p>如果一个消费者在处理任务的时候挂掉了，导致没能返回<code>ack</code>信号，RabbitMQ会知道这个任务并没有被完全执行，所以会把这个任务再分发给其它的消费者。这样，即使工作中的消费者挂掉了，也能够确保所有消息准确无误的完成。<br>这里并不需要设置任务执行的超时时间，如果消费者进程挂了，RabbitMQ会自动重新分发改消息。而在消费者进程没有挂的情况下，无论这个任务它执行了多久，都是被认为是没有问题的。  </p>
+<p>消息感知默认状态是开启的。在上面的例子中我们通过<code>autoAck=true</code>故意把它给关闭了。现在我们把它移出掉，这样就算消费者出了问题也不怕了。  </p>
+<pre><code>channel.basicQos(1);
+
+final Consumer consumer = new DefaultConsumer(channel) {
+  @Override
+  public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) throws IOException {
+    String message = new String(body, &quot;UTF-8&quot;);
+
+    System.out.println(&quot; [x] Received &apos;&quot; + message + &quot;&apos;&quot;);
+    try {
+      doWork(message);
+    } finally {
+      System.out.println(&quot; [x] Done&quot;);
+      channel.basicAck(envelope.getDeliveryTag(), false);
+    }
+  }
+};    
+</code></pre><h5 id="忘记感知回馈"><a href="#忘记感知回馈" class="headerlink" title="忘记感知回馈"></a>忘记感知回馈</h5><p>还是很容易会忘记在finally代码段里面填上感知回馈的，而且这样造成的后果也是极其严重的：当你的客户端退出的时候，消息就被重新分发了（而这看上去却像是random的重分发），这样RabbitMQ会消耗越来越多的内存，因为它没有收到”ack“回应，也不好释放队列中的消息。  </p>
+<p>为了能够调试该问题，可以使用<code>rabbitmqctl</code>来打印出未收到ack回应的一些消息的。  </p>
+<pre><code>$ sudo rabbitmqctl list_queues name messages_ready messages_unacknowledged
+Listing queues ...
+hello    0       0
+...done.
+</code></pre><h3 id="消息持久化（MQ队列挂了咋整）"><a href="#消息持久化（MQ队列挂了咋整）" class="headerlink" title="消息持久化（MQ队列挂了咋整）"></a>消息持久化（MQ队列挂了咋整）</h3><p>现在考虑到了消费者挂了的情况，为了保证消息不丢失，我们也对该情况有了不错的解决方案。但是，如果RabbitMQ服务器挂掉了呢，咋整？  </p>
+<p>RabbitMQ要是挂掉了的话，所有在队列都没了，队列里面的消息就全丢失了。因为它们都存放在内存当中的嘛，所以解决方案就有了：把它们持久化到硬盘上。  </p>
+<p>首先我们要保证RabbitMQ不会丢失队列。为此，我们需要如下的代码来设置持久化：</p>
+<pre><code>boolean durable = true;
+channel.queueDeclare(&quot;hello&quot;, durable, false, false, null);
+</code></pre><p>嗯，这样的代码看上去是对的。但是如果你运行一下就会发现问题。问题出在哪呢？我们已经有了一个叫做“hello”的队列（在上面的demo中），而RabbitMQ不允许同样的队列拥有不同的配置，所以就报错了。因此我们需要换一个队列：</p>
+<pre><code>boolean durable = true;
+channel.queueDeclare(&quot;task_queue&quot;, durable, false, false, null);
+</code></pre><p>这种queue的设置在生产者和消费者两端都要设置。  </p>
+<p>这个时候我们已经确保了”task_queue”这个队列不会丢失了，即使RabbitMQ重启了。然而里面的消息并没有，所以我们还需要把传递的消息标记为持久化的，这个通过设置实现了<code>BasicProperties</code>接口的<code>MessageProperties</code>类中的<code> PERSISTENT_TEXT_PLAIN </code>属性来指定： </p>
+<pre><code>import com.rabbitmq.client.MessageProperties;
+
+channel.basicPublish(&quot;&quot;, &quot;task_queue&quot;,
+        MessageProperties.PERSISTENT_TEXT_PLAIN,
+        message.getBytes());
+</code></pre><h5 id="关于消息持久化需要注意的点"><a href="#关于消息持久化需要注意的点" class="headerlink" title="关于消息持久化需要注意的点"></a>关于消息持久化需要注意的点</h5><p>标记消息持久化并不能完全的确保消息就一定不会丢失了。尽管RabbitMQ收到持久化消息到硬盘上的指令了，然而数据保存到硬盘上是需要时间的。也就是说在RabbitMQ接收到消息以后，持久化完成之前挂掉了，那消息还是丢失了。但是对于正常的使用来说，这样已经足够了。如果需要确保任务万无一失，那么可以参照<a href="https://www.rabbitmq.com/confirms.html" target="_blank" rel="noopener">publisher confirms</a></p>
+<h3 id="公正地分发"><a href="#公正地分发" class="headerlink" title="公正地分发"></a>公正地分发</h3><p>你可能发现RabbitMQ分发消息的的方法和我们希望的并不完全一样。比如在一个有2个消费者的场景中，有的任务耗时很长，有的任务耗时很短，其中一个消费者已经累的执行不过来任务了，另外一个消费还在悠闲的没事情干。然而RabbitMQ并不知道这两个消费者谁忙谁闲，所以只能够平均的把任务分发给两个消费者来干。  </p>
+<p>导致这个问题的原因是RabbitMQ在消息进来的时候只负责分发消息，并不管到底消费者返回了多少个”ack”的消息。所以MQ一直盲目地把第n个消息分发给第n个消费者。<br><img src="https://www.rabbitmq.com/img/tutorials/prefetch-count.png" alt=""></p>
+<p>为了解决这个问题，我们可以使用<code> basicQos </code>方法，设置为<code>prefetchCount = 1 </code>。其实就是告诉RabbitMQ，不要一次性给消费者超过1个任务。换句话说，不再给某个消费者分发任务，直到这个消费者完成了手头的工作，并且给MQ返回”ack”消息了。这样，RabbitMQ就能够确保任务分发到的消费者肯定是空闲着的。  </p>
+<pre><code>int prefetchCount = 1;
+channel.basicQos(prefetchCount);
+</code></pre><h5 id="关于queue-size需要注意的点"><a href="#关于queue-size需要注意的点" class="headerlink" title="关于queue size需要注意的点"></a>关于queue size需要注意的点</h5><p>如果所有的消费者都很忙，那么你的queue队列很有可能会被填满。那么你就要注意了，要么多添加一些消费者，或者采用其它的措施。</p>
+<h3 id="综上，写代码"><a href="#综上，写代码" class="headerlink" title="综上，写代码"></a>综上，写代码</h3><p><a href="http://github.com/rabbitmq/rabbitmq-tutorials/blob/master/java/NewTask.java" target="_blank" rel="noopener">(NewTask.java source)</a><br><a href="http://github.com/rabbitmq/rabbitmq-tutorials/blob/master/java/Worker.java" target="_blank" rel="noopener">(Worker.java source)</a>  </p>
+<p>想要了解更多的<code> Channel </code>或者是<code> MessageProperties </code>相关的方法的，请查看<a href="http://www.rabbitmq.com/releases/rabbitmq-java-client/current-javadoc/" target="_blank" rel="noopener">java文档</a></p>
+<p><br><br><br>————翁英健</p>
+<p>本文地址：<a href="http://wengyingjian.github.io/2015/12/30/rabbitmq-workqueues/" target="_blank" rel="noopener">http://wengyingjian.github.io/2015/12/30/rabbitmq-workqueues/</a></p>
+<p>-End-</p>
+<hr>
+</div><div class="tags"><a href="/tags/rabbitmq/">rabbitmq</a><a href="/tags/消息队列/">消息队列</a></div><div class="post-share"><div class="bdsharebuttonbox"><span style="float:left;line-height: 28px;height: 28px;font-size:16px;font-weight:blod">分享到：</span><a href="#" data-cmd="more" class="bds_more"></a><a href="#" data-cmd="mshare" title="分享到一键分享" class="bds_mshare"></a><a href="#" data-cmd="fbook" title="分享到Facebook" class="bds_fbook"></a><a href="#" data-cmd="twi" title="分享到Twitter" class="bds_twi"></a><a href="#" data-cmd="linkedin" title="分享到linkedin" class="bds_linkedin"></a><a href="#" data-cmd="youdao" title="分享到有道云笔记" class="bds_youdao"></a><a href="#" data-cmd="evernotecn" title="分享到印象笔记" class="bds_evernotecn"></a><a href="#" data-cmd="weixin" title="分享到微信" class="bds_weixin"></a><a href="#" data-cmd="qzone" title="分享到QQ空间" class="bds_qzone"></a><a href="#" data-cmd="tsina" title="分享到新浪微博" class="bds_tsina"></a></div></div><div class="post-nav"><a href="/2015/12/30/rabbitmq-helloworld/" class="pre">Rabbitmq（一）－Hello World</a><a href="/2015/12/30/server-rabbitmq-init/" class="next">服务器搭建（九）－Rabbitmq的安装配置</a></div><div id="comments"></div></div></div></div><div class="layout-r"><div id="sidebar"><div class="search-pla"></div><div id="toc" class="widget"><div class="widget-title"><i class="fa fa-fei">文章目录</i></div><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#Work-Queues"><span class="toc-text">Work Queues</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#准备"><span class="toc-text">准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#测试"><span class="toc-text">测试</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#消息感知（消费者挂了咋整）"><span class="toc-text">消息感知（消费者挂了咋整）</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#忘记感知回馈"><span class="toc-text">忘记感知回馈</span></a></li></ol></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#消息持久化（MQ队列挂了咋整）"><span class="toc-text">消息持久化（MQ队列挂了咋整）</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#关于消息持久化需要注意的点"><span class="toc-text">关于消息持久化需要注意的点</span></a></li></ol></li></ol><li class="toc-item toc-level-3"><a class="toc-link" href="#公正地分发"><span class="toc-text">公正地分发</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#关于queue-size需要注意的点"><span class="toc-text">关于queue size需要注意的点</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#综上，写代码"><span class="toc-text">综上，写代码</span></a></li></div><div class="widget"><div class="widget-title"><i class="fa fa-xie"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/11/28/idea-license/">IDEA 2016 最新版 激活 破解</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/03/10/nginx-usage-list/">Nginx－虚拟主机、反向代理、负载均衡</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/02/20/wechat-develop/">微信公众号开发</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/02/08/server-gitlab-init/">Centos7 Gitlab 环境搭建</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/02/06/spring-source-load-xml/">Spring源码（一）－读取xml配置</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/02/04/maven-archetype-bugfix/">Maven Archetype编写（二）</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/01/31/maven-archetype-init/">Maven Archetype编写（一）</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/01/23/maven-autoconf-fix/">Maven Autoconf打包问题</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/01/19/docker-what-is/">Docker是什么</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/01/10/nginx-note-reverse-proxy/">Nginx学习笔记（三）－Nginx作为反向代理</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-gui"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/blog/">blog</a><span class="category-list-count">49</span></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-biao"> 标签</i></div><div class="tagcloud"><a href="/tags/性能/" style="font-size: 15px;">性能</a> <a href="/tags/github/" style="font-size: 15px;">github</a> <a href="/tags/helloWorld/" style="font-size: 15px;">helloWorld</a> <a href="/tags/域名/" style="font-size: 15px;">域名</a> <a href="/tags/linux/" style="font-size: 15px;">linux</a> <a href="/tags/随笔/" style="font-size: 15px;">随笔</a> <a href="/tags/docker/" style="font-size: 15px;">docker</a> <a href="/tags/rabbitmq/" style="font-size: 15px;">rabbitmq</a> <a href="/tags/消息队列/" style="font-size: 15px;">消息队列</a> <a href="/tags/hexo/" style="font-size: 15px;">hexo</a> <a href="/tags/自动化工具/" style="font-size: 15px;">自动化工具</a> <a href="/tags/java/" style="font-size: 15px;">java</a> <a href="/tags/404/" style="font-size: 15px;">404</a> <a href="/tags/idea/" style="font-size: 15px;">idea</a> <a href="/tags/部署/" style="font-size: 15px;">部署</a> <a href="/tags/jvm/" style="font-size: 15px;">jvm</a> <a href="/tags/jekyll/" style="font-size: 15px;">jekyll</a> <a href="/tags/内存/" style="font-size: 15px;">内存</a> <a href="/tags/服务器/" style="font-size: 15px;">服务器</a> <a href="/tags/spring/" style="font-size: 15px;">spring</a> <a href="/tags/jenkins/" style="font-size: 15px;">jenkins</a> <a href="/tags/git/" style="font-size: 15px;">git</a> <a href="/tags/maven/" style="font-size: 15px;">maven</a> <a href="/tags/nginx/" style="font-size: 15px;">nginx</a> <a href="/tags/缓存/" style="font-size: 15px;">缓存</a> <a href="/tags/redis/" style="font-size: 15px;">redis</a> <a href="/tags/hudson/" style="font-size: 15px;">hudson</a> <a href="/tags/ubuntu/" style="font-size: 15px;">ubuntu</a> <a href="/tags/tomcat/" style="font-size: 15px;">tomcat</a> <a href="/tags/nexus/" style="font-size: 15px;">nexus</a> <a href="/tags/ssh/" style="font-size: 15px;">ssh</a> <a href="/tags/商品超卖/" style="font-size: 15px;">商品超卖</a> <a href="/tags/数据库/" style="font-size: 15px;">数据库</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-archive"> 归档</i></div><ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">十一月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">三月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">二月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">一月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">十二月 2015</a></li></ul></div></div></div></div><a id="totop" href="#top"></a><div id="footer"><div class="footer-info"><p><a href="/baidusitemap.xml">Baidu Site Haritası</a> |  <a href="/atom.xml">订阅</a> |  <a href="/about/">关于</a></p><p>本站总访问量：<i id="busuanzi_container_site_pv"><i id="busuanzi_value_site_pv"></i></i>次</p><p><span> Copyright &copy;<a href="/." rel="nofollow">authorwyj.</a></span><span> Theme by<a rel="nofollow" target="_blank" href="https://github.com/chaooo/hexo-theme-BlueLake"> BlueLake.</a></span><span> Count by<a href="http://busuanzi.ibruce.info/"> busuanzi.</a></span><span> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a></span></p></div></div></div><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><script type="text/javascript" src="/js/search.json.js?v=2.0.1"></script><script type="text/javascript" src="/js/toctotop.js?v=2.0.1" async></script><script>window._bd_share_config={"common":{"bdSnsKey":{},"bdText":"","bdMini":"2","bdMiniList":["mshare","weixin","tsina","qzone","linkedin","fbook","twi","print","renren","sqq","evernotecn","bdysc","tqq","tqf","bdxc","kaixin001","tieba","douban","bdhome","thx","ibaidu","meilishuo","mogujie","diandian","huaban","duitang","hx","fx","youdao","sdo","qingbiji","people","xinhua","mail","isohu","yaolan","wealink","ty","iguba","h163","copy"],"bdPic":"","bdStyle":"1","bdSize":"16"},"share":{},"image":{"viewList":["tsina","qzone","weixin","fbook","twi","linkedin","youdao","evernotecn","mshare"],"viewText":"分享到：","viewSize":"16"},"selectShare":{"bdContainerClass":null,"bdSelectMiniList":["tsina","qzone","weixin","fbook","twi","linkedin","youdao","evernotecn","mshare"]}};with(document)0[(getElementsByTagName('head')[0]||head).appendChild(createElement('script')).src='http://bdimg.share.baidu.com/static/api/js/share.js?v=89860593.js?cdnversion='+~(-new Date()/36e5)];
+</script></body></html>

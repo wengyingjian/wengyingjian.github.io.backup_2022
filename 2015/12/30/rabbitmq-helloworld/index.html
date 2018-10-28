@@ -1,0 +1,90 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta name="generator" content="Hexo 3.8.0"><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="description"><meta name="keywords" content="keywords1,keywords2,"><title>Rabbitmq（一）－Hello World | 翁英健的博客</title><link rel="stylesheet" type="text/css" href="//fonts.neworld.org/css?family=Source+Code+Pro"><link rel="stylesheet" type="text/css" href="/css/style.css?v=2.0.1"><link rel="stylesheet" type="text/css" href="/css/highlight.css?v=2.0.1"><link rel="Shortcut Icon" href="/favicon.ico"><link rel="bookmark" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"><link rel="alternate" type="application/atom+xml" href="/atom.xml"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">Rabbitmq（一）－Hello World</h1><a id="logo" href="/.">翁英健的博客</a><p class="description">subtitle</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div><div id="search-form"><div id="result-mask" class="hide"></div><label><input id="search-key" type="text" autocomplete="off" placeholder="请输入关键字..."></label><div id="result-wrap" class="hide"><div id="search-result"></div></div><div class="hide"><template id="search-tpl"><div class="item"><a href="/{path}" title="{title}"><div class="title">{title}</div><div class="time">{date}</div><div class="tags">{tags}</div></a></div></template></div></div></div><div id="layout" class="layout-g"><div class="layout-l"><div class="content_container"><div class="post"><h1 class="post-title">Rabbitmq（一）－Hello World</h1><div class="post-meta"><a href="/2015/12/30/rabbitmq-helloworld/#comments" class="comment-count"></a><p><span class="date">Dec 30, 2015</span><span><a href="/categories/blog/" class="category">blog</a></span><span><i id="busuanzi_container_page_pv"><i id="busuanzi_value_page_pv"></i><i>点击</i></i></span></p></div><div class="post-content"><p>翻译自：<a href="https://www.rabbitmq.com/tutorials/tutorial-one-java.html" target="_blank" rel="noopener">https://www.rabbitmq.com/tutorials/tutorial-one-java.html</a><br>整理过的源代码(java-maven,helloworld-package)：<a href="https://github.com/wengyingjian/rabbitmq-tutorial.git" target="_blank" rel="noopener">https://github.com/wengyingjian/rabbitmq-tutorial.git</a> </p>
+<h2 id="须知"><a href="#须知" class="headerlink" title="须知"></a>须知</h2><p>本教程默认rabbitmq安装在localhost，默认的端口（5672）。<br>如果有改动，则需调整。<br>rabbitmq安装:<a href="http://wengyingjian.github.io/2015/12/30/server-rabbitmq-init/" target="_blank" rel="noopener">http://wengyingjian.github.io/2015/12/30/server-rabbitmq-init/</a></p>
+<h2 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h2><p>RabbitMQ是一个消息传送者。它的目的非常明确：接受消息与传递消息。你可以把它想象成一个邮局：你把邮件丢到邮箱里面，那就能够明确保证最终邮件会被送到目的地。打个比方来说：RabbitMQ就是一个邮箱、邮局加上邮递员。<br>RabbitMQ与邮局卫衣的区别就是mq它传递的不是信封，而是二进制的数据－信息。 </p>
+<h5 id="术语"><a href="#术语" class="headerlink" title="术语"></a>术语</h5><p>RabbitMQ，以及一些常用的消息队列，都会使用到一些术语：</p>
+<ol>
+<li>生产者（Producer）：负责发送消息的那个的程序就叫做生产者。我们用“P”来代表生产者，如下：<br><img src="https://www.rabbitmq.com/img/tutorials/producer.png" alt=""></li>
+<li>队列（Queue）就是邮箱的意思，就在RabbitMQ之中。尽管信息在RabbitMQ和应用程序之间来回传递，信息也是可以存放在队列（queue）之中的。队列的大小是没有限制的，你想要往里面存多少东西都可以。可以有很多很多的生产者（Producer）往同一个队列里面发送消息，也可以有很多很多的消费者（Consumer）从同一个队列里面取数据。队列的画法如下：<br><img src="https://www.rabbitmq.com/img/tutorials/queue.png" alt=""></li>
+<li>消费可以就把它理解为接收（数据）的意思。负责等待接收数据的程序我们把它叫做消费者（Consumer）。画法如下：<br><img src="https://www.rabbitmq.com/img/tutorials/consumer.png" alt=""></li>
+</ol>
+<p>注意：生产者（Producer），消费者（Consumer），队列（Queue）不需要保证在同一台机器上。而且在大多数的应用中它们都不是在同一台机器上的。  </p>
+<h2 id="Hello-World"><a href="#Hello-World" class="headerlink" title="Hello World!"></a>Hello World!</h2><p>(通过java客户端实现)<br>在本教程里面，我们将会用Java写两个程序：一个用于发送消息的生产者，和一个用于接收消息并且把消息打印出来的消费者。当然也会有注释。  </p>
+<p>示意图中，“P”就是生产者，“C”就是消费者。中间的匣子就是队列－RabbitMQ的缓冲区。<br><img src="https://www.rabbitmq.com/img/tutorials/python-one.png" alt=""></p>
+<p><strong>Java客户端jar包</strong><br>我们就从<a href="http://www.rabbitmq.com/java-client.html" target="_blank" rel="noopener">这里</a>下载库包，然后检查签名。解压到工作区，然后拿过去用。。。  </p>
+<pre><code>$ unzip rabbitmq-java-client-bin-*.zip
+$ cp rabbitmq-java-client-bin-*/*.jar ./
+</code></pre><p>RabbitMQ的Java客户端在Maven中央仓库也有，groupId为<code>com.rabbitmq</code>，artifactId为<code> amqp-client </code>。<br>（这里为就用maven项目来做了）  </p>
+<p>下面开始写代码。  </p>
+<h5 id="生产者"><a href="#生产者" class="headerlink" title="生产者"></a>生产者</h5><p><img src="https://www.rabbitmq.com/img/tutorials/sending.png" alt=""></p>
+<p>我们会调用消息发送者去发送消息，消息接受者去接收消息。那么作为发送者，它要做的就是连上RabbitMQ，发送一个消息，然后退出。  </p>
+<p>在<code>Send.java</code>中，需要引入以下的包：  </p>
+<pre><code>import com.rabbitmq.client.ConnectionFactory;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.Channel;
+</code></pre><p>设置queue的名字：</p>
+<pre><code>public class Send {
+  private final static String QUEUE_NAME = &quot;hello&quot;;
+
+  public static void main(String[] argv)
+      throws java.io.IOException {
+      ...
+  }
+} 
+</code></pre><p>然后创建一个与server的连接：</p>
+<pre><code>ConnectionFactory factory = new ConnectionFactory();
+factory.setHost(&quot;localhost&quot;);
+Connection connection = factory.newConnection();
+Channel channel = connection.createChannel();
+</code></pre><p>这个Connection将scoket连接抽象化，帮我们完成了协议的认证、授权等等步骤。这里，我们建立了与localhost的消息传送者的连接。如果我们需要建立远程的连接，用ip地址替代掉”localhost”即可。<br>下一步需要创建一个Channel，大多数的API都在这个接口上。<br>必须声明要发送到哪个队列，然后才能够将消息发布出去： </p>
+<pre><code>channel.queueDeclare(QUEUE_NAME, false, false, false, null);
+String message = &quot;Hello World!&quot;;
+channel.basicPublish(&quot;&quot;, QUEUE_NAME, null, message.getBytes());
+System.out.println(&quot; [x] Sent &apos;&quot; + message + &quot;&apos;&quot;);
+</code></pre><p>声明的queue只有在它不存在的时候才会被新建。消息的内容是一个byte数组，所以你随便怎么编码都行。<br>最终，记得关闭连接：  </p>
+<pre><code>channel.close();
+connection.close();
+</code></pre><p><a href="http://github.com/rabbitmq/rabbitmq-tutorials/blob/master/java/Send.java" target="_blank" rel="noopener">Send.java点击此处</a>  </p>
+<p><strong>什么，发送不了？</strong><br>如果你是第一次使用RabbitMQ，而且你并没有看到控制台打印”Send”消息，那么就会想到底哪里出了问题呢？有可能是消息传送者开启了，但是没有足够的剩余磁盘空间（默认来说它是需要至少1GB的空闲磁盘的），所以它就拒绝接收消息了。检查一下消息发送者的日志文件确认一下问题，如果必要的话可以减少一下空闲磁盘的要求。<a href="http://www.rabbitmq.com/configure.html#config-items" target="_blank" rel="noopener">配置说明文档</a>可以帮助你设置<code> disk_free_limit </code>参数。</p>
+<h5 id="消费者"><a href="#消费者" class="headerlink" title="消费者"></a>消费者</h5><p>生产者的事已经完成了。消费者和生产者不大一样：生产者发送一下消息就好了，而消费者需要一直监听着，查看有没有新的消息过来，然后把消息打印出来。<br><img src="https://www.rabbitmq.com/img/tutorials/receiving.png" alt=""></p>
+<p>Recv.java文件引入的类核Send差不多：</p>
+<pre><code>import com.rabbitmq.client.ConnectionFactory;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Consumer;
+import com.rabbitmq.client.DefaultConsumer;
+</code></pre><p>这个额外的<code>DefaultConsumer</code>是<code>Consumer</code>接口的一个实现类，我们将用它来缓存服务器推送给我们消息。<br>同样的代码：</p>
+<pre><code>public class Recv {
+  private final static String QUEUE_NAME = &quot;hello&quot;;
+
+  public static void main(String[] argv)
+      throws java.io.IOException,
+             java.lang.InterruptedException {
+
+    ConnectionFactory factory = new ConnectionFactory();
+    factory.setHost(&quot;localhost&quot;);
+    Connection connection = factory.newConnection();
+    Channel channel = connection.createChannel();
+
+    channel.queueDeclare(QUEUE_NAME, false, false, false, null);
+    System.out.println(&quot; [*] Waiting for messages. To exit press CTRL+C&quot;);
+    ...
+    }
+}
+</code></pre><p>注意，我们在这里也声明了queue。因为我们很有可能是在sender程序运行之前就开始监听。也就是说Recv.java很可能是先运行的，所以我们需要保证这个queue是存在的。<br>另外还要告诉服务器把消息从队列中传送过来。因为服务器过来的消息是异步的，所以我们提供了回调函数，在我们使用它们之前消息都会被先缓存起来。这就是<code>DefaultConsumer</code>实现类做的事情：</p>
+<pre><code>Consumer consumer = new DefaultConsumer(channel) {
+  @Override
+  public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body)
+      throws IOException {
+    String message = new String(body, &quot;UTF-8&quot;);
+    System.out.println(&quot; [x] Received &apos;&quot; + message + &quot;&apos;&quot;);
+  }
+};
+channel.basicConsume(QUEUE_NAME, true, consumer);
+</code></pre><p><a href="http://github.com/rabbitmq/rabbitmq-tutorials/blob/master/java/Recv.java" target="_blank" rel="noopener">Recv.java点击此处</a></p>
+<p>java程序怎么运行的我就不说了。。</p>
+<p><br><br><br>————翁英健</p>
+<p>本文地址：<a href="http://wengyingjian.github.io/2015/12/30/rabbitmq-helloworld/" target="_blank" rel="noopener">http://wengyingjian.github.io/2015/12/30/rabbitmq-helloworld/</a></p>
+<p>-End-</p>
+<hr>
+</div><div class="tags"><a href="/tags/helloWorld/">helloWorld</a><a href="/tags/rabbitmq/">rabbitmq</a><a href="/tags/消息队列/">消息队列</a></div><div class="post-share"><div class="bdsharebuttonbox"><span style="float:left;line-height: 28px;height: 28px;font-size:16px;font-weight:blod">分享到：</span><a href="#" data-cmd="more" class="bds_more"></a><a href="#" data-cmd="mshare" title="分享到一键分享" class="bds_mshare"></a><a href="#" data-cmd="fbook" title="分享到Facebook" class="bds_fbook"></a><a href="#" data-cmd="twi" title="分享到Twitter" class="bds_twi"></a><a href="#" data-cmd="linkedin" title="分享到linkedin" class="bds_linkedin"></a><a href="#" data-cmd="youdao" title="分享到有道云笔记" class="bds_youdao"></a><a href="#" data-cmd="evernotecn" title="分享到印象笔记" class="bds_evernotecn"></a><a href="#" data-cmd="weixin" title="分享到微信" class="bds_weixin"></a><a href="#" data-cmd="qzone" title="分享到QQ空间" class="bds_qzone"></a><a href="#" data-cmd="tsina" title="分享到新浪微博" class="bds_tsina"></a></div></div><div class="post-nav"><a href="/2015/12/30/rabbitmq-qa-remote/" class="pre">Rabbitmq（二）－远程连接失败问题</a><a href="/2015/12/30/rabbitmq-workqueues/" class="next">Rabbitmq（三）－Work Queues</a></div><div id="comments"></div></div></div></div><div class="layout-r"><div id="sidebar"><div class="search-pla"></div><div id="toc" class="widget"><div class="widget-title"><i class="fa fa-fei">文章目录</i></div><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#须知"><span class="toc-text">须知</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#介绍"><span class="toc-text">介绍</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#术语"><span class="toc-text">术语</span></a></li></ol></li></ol><li class="toc-item toc-level-2"><a class="toc-link" href="#Hello-World"><span class="toc-text">Hello World!</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#生产者"><span class="toc-text">生产者</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#消费者"><span class="toc-text">消费者</span></a></li></ol></li></div><div class="widget"><div class="widget-title"><i class="fa fa-xie"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/11/28/idea-license/">IDEA 2016 最新版 激活 破解</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/03/10/nginx-usage-list/">Nginx－虚拟主机、反向代理、负载均衡</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/02/20/wechat-develop/">微信公众号开发</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/02/08/server-gitlab-init/">Centos7 Gitlab 环境搭建</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/02/06/spring-source-load-xml/">Spring源码（一）－读取xml配置</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/02/04/maven-archetype-bugfix/">Maven Archetype编写（二）</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/01/31/maven-archetype-init/">Maven Archetype编写（一）</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/01/23/maven-autoconf-fix/">Maven Autoconf打包问题</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/01/19/docker-what-is/">Docker是什么</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/01/10/nginx-note-reverse-proxy/">Nginx学习笔记（三）－Nginx作为反向代理</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-gui"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/blog/">blog</a><span class="category-list-count">49</span></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-biao"> 标签</i></div><div class="tagcloud"><a href="/tags/性能/" style="font-size: 15px;">性能</a> <a href="/tags/github/" style="font-size: 15px;">github</a> <a href="/tags/helloWorld/" style="font-size: 15px;">helloWorld</a> <a href="/tags/域名/" style="font-size: 15px;">域名</a> <a href="/tags/linux/" style="font-size: 15px;">linux</a> <a href="/tags/随笔/" style="font-size: 15px;">随笔</a> <a href="/tags/docker/" style="font-size: 15px;">docker</a> <a href="/tags/rabbitmq/" style="font-size: 15px;">rabbitmq</a> <a href="/tags/消息队列/" style="font-size: 15px;">消息队列</a> <a href="/tags/hexo/" style="font-size: 15px;">hexo</a> <a href="/tags/自动化工具/" style="font-size: 15px;">自动化工具</a> <a href="/tags/java/" style="font-size: 15px;">java</a> <a href="/tags/404/" style="font-size: 15px;">404</a> <a href="/tags/idea/" style="font-size: 15px;">idea</a> <a href="/tags/部署/" style="font-size: 15px;">部署</a> <a href="/tags/jvm/" style="font-size: 15px;">jvm</a> <a href="/tags/jekyll/" style="font-size: 15px;">jekyll</a> <a href="/tags/内存/" style="font-size: 15px;">内存</a> <a href="/tags/服务器/" style="font-size: 15px;">服务器</a> <a href="/tags/spring/" style="font-size: 15px;">spring</a> <a href="/tags/jenkins/" style="font-size: 15px;">jenkins</a> <a href="/tags/git/" style="font-size: 15px;">git</a> <a href="/tags/maven/" style="font-size: 15px;">maven</a> <a href="/tags/nginx/" style="font-size: 15px;">nginx</a> <a href="/tags/缓存/" style="font-size: 15px;">缓存</a> <a href="/tags/redis/" style="font-size: 15px;">redis</a> <a href="/tags/hudson/" style="font-size: 15px;">hudson</a> <a href="/tags/ubuntu/" style="font-size: 15px;">ubuntu</a> <a href="/tags/tomcat/" style="font-size: 15px;">tomcat</a> <a href="/tags/nexus/" style="font-size: 15px;">nexus</a> <a href="/tags/ssh/" style="font-size: 15px;">ssh</a> <a href="/tags/商品超卖/" style="font-size: 15px;">商品超卖</a> <a href="/tags/数据库/" style="font-size: 15px;">数据库</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-archive"> 归档</i></div><ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">十一月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">三月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">二月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">一月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">十二月 2015</a></li></ul></div></div></div></div><a id="totop" href="#top"></a><div id="footer"><div class="footer-info"><p><a href="/baidusitemap.xml">Baidu Site Haritası</a> |  <a href="/atom.xml">订阅</a> |  <a href="/about/">关于</a></p><p>本站总访问量：<i id="busuanzi_container_site_pv"><i id="busuanzi_value_site_pv"></i></i>次</p><p><span> Copyright &copy;<a href="/." rel="nofollow">authorwyj.</a></span><span> Theme by<a rel="nofollow" target="_blank" href="https://github.com/chaooo/hexo-theme-BlueLake"> BlueLake.</a></span><span> Count by<a href="http://busuanzi.ibruce.info/"> busuanzi.</a></span><span> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a></span></p></div></div></div><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><script type="text/javascript" src="/js/search.json.js?v=2.0.1"></script><script type="text/javascript" src="/js/toctotop.js?v=2.0.1" async></script><script>window._bd_share_config={"common":{"bdSnsKey":{},"bdText":"","bdMini":"2","bdMiniList":["mshare","weixin","tsina","qzone","linkedin","fbook","twi","print","renren","sqq","evernotecn","bdysc","tqq","tqf","bdxc","kaixin001","tieba","douban","bdhome","thx","ibaidu","meilishuo","mogujie","diandian","huaban","duitang","hx","fx","youdao","sdo","qingbiji","people","xinhua","mail","isohu","yaolan","wealink","ty","iguba","h163","copy"],"bdPic":"","bdStyle":"1","bdSize":"16"},"share":{},"image":{"viewList":["tsina","qzone","weixin","fbook","twi","linkedin","youdao","evernotecn","mshare"],"viewText":"分享到：","viewSize":"16"},"selectShare":{"bdContainerClass":null,"bdSelectMiniList":["tsina","qzone","weixin","fbook","twi","linkedin","youdao","evernotecn","mshare"]}};with(document)0[(getElementsByTagName('head')[0]||head).appendChild(createElement('script')).src='http://bdimg.share.baidu.com/static/api/js/share.js?v=89860593.js?cdnversion='+~(-new Date()/36e5)];
+</script></body></html>

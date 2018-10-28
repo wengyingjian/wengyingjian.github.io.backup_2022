@@ -1,0 +1,150 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta name="generator" content="Hexo 3.8.0"><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="description"><meta name="keywords" content="keywords1,keywords2,"><title>Rabbitmq（七）－RPC | 翁英健的博客</title><link rel="stylesheet" type="text/css" href="//fonts.neworld.org/css?family=Source+Code+Pro"><link rel="stylesheet" type="text/css" href="/css/style.css?v=2.0.1"><link rel="stylesheet" type="text/css" href="/css/highlight.css?v=2.0.1"><link rel="Shortcut Icon" href="/favicon.ico"><link rel="bookmark" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"><link rel="alternate" type="application/atom+xml" href="/atom.xml"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">Rabbitmq（七）－RPC</h1><a id="logo" href="/.">翁英健的博客</a><p class="description">subtitle</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div><div id="search-form"><div id="result-mask" class="hide"></div><label><input id="search-key" type="text" autocomplete="off" placeholder="请输入关键字..."></label><div id="result-wrap" class="hide"><div id="search-result"></div></div><div class="hide"><template id="search-tpl"><div class="item"><a href="/{path}" title="{title}"><div class="title">{title}</div><div class="time">{date}</div><div class="tags">{tags}</div></a></div></template></div></div></div><div id="layout" class="layout-g"><div class="layout-l"><div class="content_container"><div class="post"><h1 class="post-title">Rabbitmq（七）－RPC</h1><div class="post-meta"><a href="/2016/01/02/rabbitmq-rpc/#comments" class="comment-count"></a><p><span class="date">Jan 02, 2016</span><span><a href="/categories/blog/" class="category">blog</a></span><span><i id="busuanzi_container_page_pv"><i id="busuanzi_value_page_pv"></i><i>点击</i></i></span></p></div><div class="post-content"><p>翻译自：<a href="https://www.rabbitmq.com/tutorials/tutorial-six-java.html" target="_blank" rel="noopener">https://www.rabbitmq.com/tutorials/tutorial-six-java.html</a><br>整理过的源代码(java-maven,workqueues-package)：<a href="https://github.com/wengyingjian/rabbitmq-tutorial.git" target="_blank" rel="noopener">https://github.com/wengyingjian/rabbitmq-tutorial.git</a>  </p>
+<h2 id="远程方法调用（RPC）"><a href="#远程方法调用（RPC）" class="headerlink" title="远程方法调用（RPC）"></a>远程方法调用（RPC）</h2><p>(通过java客户端实现)  </p>
+<p>在<a href="http://wengyingjian.github.io/2015/12/30/rabbitmq-workqueues/" target="_blank" rel="noopener">Rabbitmq（三）－Work Queues</a>中我们通过工作队列分发实现了多个消费者分担处理任务的功能。  </p>
+<p>但是，如果我们执行的任务是有返回结果的，而且我们还需要这个结果呢？这种情况就有点不同了，在术语上我们称之为远程方法调用或者是RPC。</p>
+<p>在这篇教程中，我们准备实现一个远程调用的功能：一个客户端，还有一个可扩展的RPC服务器。然而我们手头并没有啥需要返回结果的需求，只好模拟一个了：让RPC服务器返回Fibonacci数列。  </p>
+<h5 id="客户端接口"><a href="#客户端接口" class="headerlink" title="客户端接口"></a>客户端接口</h5><p>要说明RPC服务器的工作原理，我们还需要创建一个简单的客户端接口。对外暴露一个<code>call</code>方法，然后调用这个<code>call</code>方法－－阻塞一段时间，直到接收到服务器的返回结果。  </p>
+<pre><code>FibonacciRpcClient fibonacciRpc = new FibonacciRpcClient();   
+String result = fibonacciRpc.call(&quot;4&quot;);
+System.out.println( &quot;fib(4) is &quot; + result);
+</code></pre><p><strong>关于RPC需要注意的</strong><br>虽然RPC调用在计算机领域已经再平常不过了，但是如果程序员不知道一个方法的调用到底是本地调用还是（速度较慢的）远程调用的时候，可能就要出问题了。上述的这种情况会导致系统的不可预知性，而且还会给程序调试带来很大的麻烦。乱用、滥用RPC会使得程序的可维护性变的非常的差。  </p>
+<p>所以，可以考虑一下如下的建议：  </p>
+<blockquote>
+<p>始终要明确一个方法的调用是本地调用还是远程调用。<br>给自己的代码写文档。让各个组件之间的依赖关系变的清晰明了。<br>做好异常处理：如果远程调用的服务挂了，或者是执行超时了该如何处理。  </p>
+</blockquote>
+<p>你也可以尝试使用异步管道来取代RPC－－当任务执行完成的时候自动将结果推送到下一个运行环境之中。  </p>
+<h5 id="回调队列"><a href="#回调队列" class="headerlink" title="回调队列"></a>回调队列</h5><p>总的来说，通过RabbitMQ的RPC还是比较简单的：客户端将请求消息发送过去，服务器将执行结果返回回来。为了能够接收这个服务器处过来的返回结果，我们发送过去的消息就需要是带有回调信息的。</p>
+<pre><code>callbackQueueName = channel.queueDeclare().getQueue();
+
+BasicProperties props = new BasicProperties
+                            .Builder()
+                            .replyTo(callbackQueueName)
+                            .build();
+
+channel.basicPublish(&quot;&quot;, &quot;rpc_queue&quot;, props, message.getBytes());
+
+// ... then code to read a response message from the callback_queue ...
+</code></pre><p><strong>消息属性</strong><br>AMQP协议预定义了14个消息（message）携带的属性。但是除了以下的一些属性，其它的很少被用到：  </p>
+<blockquote>
+<p><code> deliveryMode </code>:将消息标记为持久态（值为2）或者是瞬时态（其它任何值）。有可能你还记得在<a href="http://wengyingjian.github.io/2015/12/30/rabbitmq-workqueues/" target="_blank" rel="noopener">Rabbitmq（三）－Work Queues</a>中有提到过。<br><code> contentType </code>:用于说明编码的格式。比如说使用Json的格式，那么可以设置为：<code> application/json </code>。<br><code> replyTo </code>:通常用于给回调队列命名。<br><code> correlationId </code>:用于与请求的返回结果相关联。  </p>
+</blockquote>
+<p>写代码的时候需要引用如下：  </p>
+<pre><code>import com.rabbitmq.client.AMQP.BasicProperties;
+</code></pre><h5 id="Correlation-Id"><a href="#Correlation-Id" class="headerlink" title="Correlation Id"></a>Correlation Id</h5><p>我们希望在所有的远程调用上都加上返回结果。然而这样做并不是很合理，还好有个更好的方法－－给它们都设置一个回调队列。  </p>
+<p>这就产生了一个新的问题，队列得到了返回结果以后并不知道这个结果所属的请求者是谁。这个时候<code> correlationId </code>就该出马了。我们把每个请求的<code> correlationId </code>设置一个唯一的值，然后得到返回结果的时候就能拿到这个值，由此就能给返回结果匹配上对应的请求者了。当<code> correlationId </code>的值未知的时候，通常我们会把这个消息丢弃掉－－因为它不属于任何的请求。  </p>
+<p>哪有可能你就要问了，为什么我们要在回调队列中把未知的消息给丢弃掉，而不是报错呢？这个就涉及到服务器竞争的问题了，如果碰巧遇到RPC服务器在我们收到了返回结果，但是还未给请求发送<code>ack</code>反馈的时候挂掉了。这种情况下服务器重启后请求会再次发送，所以我们的客户端就应该处理好返回结果重复的情况。  </p>
+<h5 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h5><p><img src="https://www.rabbitmq.com/img/tutorials/python-six.png" alt="">  </p>
+<p>RPC的工作流程：  </p>
+<blockquote>
+<p>客户端开启了后，创建了一个匿名的，唯一的回调队列。<br>为了能够远程调用，客户端发送的消息需要带有2个参数：<code>replyTo</code>，设置回调的队列；<code>correlationId</code>，给每个请求设置唯一的标示。<br>将请求发送给<code>rpc_queue</code>队列。<br>RPC任务执行者（即<code>server</code>）监听该队列，等队列的请求过来的时候，它就将处理的结果返回给客户端，通过<code>replyTo</code>属性指定的那个队列。<br>客户端等待回调队列返回的数据。当接收到消息时，会先检查<code>correlationId</code>属性，如果找到了匹配上的请求，那么就将结果返回给该应用。 </p>
+</blockquote>
+<h3 id="写代码"><a href="#写代码" class="headerlink" title="写代码"></a>写代码</h3><p>Fibonacci任务：  </p>
+<pre><code>private static int fib(int n) throws Exception {
+    if (n == 0) return 0;
+    if (n == 1) return 1;
+    return fib(n-1) + fib(n-2);
+}
+</code></pre><p>我们的Fibonacci函数假定所有的输入都是正整数（别指望他能够计算太大的数字，因为递归会让栈溢出的）。  </p>
+<p><a href="https://github.com/rabbitmq/rabbitmq-tutorials/blob/master/java/RPCServer.java" target="_blank" rel="noopener">RPCServer.java</a>  </p>
+<pre><code>private static final String RPC_QUEUE_NAME = &quot;rpc_queue&quot;;
+
+ConnectionFactory factory = new ConnectionFactory();
+factory.setHost(&quot;localhost&quot;);
+
+Connection connection = factory.newConnection();
+Channel channel = connection.createChannel();
+
+channel.queueDeclare(RPC_QUEUE_NAME, false, false, false, null);
+
+channel.basicQos(1);
+
+QueueingConsumer consumer = new QueueingConsumer(channel);
+channel.basicConsume(RPC_QUEUE_NAME, false, consumer);
+
+System.out.println(&quot; [x] Awaiting RPC requests&quot;);
+
+while (true) {
+    QueueingConsumer.Delivery delivery = consumer.nextDelivery();
+
+    BasicProperties props = delivery.getProperties();
+    BasicProperties replyProps = new BasicProperties
+                                     .Builder()
+                                     .correlationId(props.getCorrelationId())
+                                     .build();
+
+    String message = new String(delivery.getBody());
+    int n = Integer.parseInt(message);
+
+    System.out.println(&quot; [.] fib(&quot; + message + &quot;)&quot;);
+    String response = &quot;&quot; + fib(n);
+
+    channel.basicPublish( &quot;&quot;, props.getReplyTo(), replyProps, response.getBytes());
+
+    channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
+}
+</code></pre><p>服务器的代码是比较直接的：  </p>
+<blockquote>
+<p>老规矩，先创建连接(Connection)、通道(Channel)，声明队列(Queue)。<br>有些时候需要运行多个服务器进程，为了保证多个服务器能够比较均衡的处理任务，还需要通过<code>channel.basicQos</code>设置<code> prefetchCount</code>。<br>通过<code> basicConsume</code>来进入队列，然后就开始跑<code>while</code>循环来等待返回结果出来，好进行下一步的工作。  </p>
+</blockquote>
+<p><a href="https://github.com/rabbitmq/rabbitmq-tutorials/blob/master/java/RPCClient.java" target="_blank" rel="noopener">RPCClient.java</a>  </p>
+<pre><code>private Connection connection;
+private Channel channel;
+private String requestQueueName = &quot;rpc_queue&quot;;
+private String replyQueueName;
+private QueueingConsumer consumer;
+
+public RPCClient() throws Exception {
+    ConnectionFactory factory = new ConnectionFactory();
+    factory.setHost(&quot;localhost&quot;);
+    connection = factory.newConnection();
+    channel = connection.createChannel();
+
+    replyQueueName = channel.queueDeclare().getQueue(); 
+    consumer = new QueueingConsumer(channel);
+    channel.basicConsume(replyQueueName, true, consumer);
+}
+
+public String call(String message) throws Exception {     
+    String response = null;
+    String corrId = java.util.UUID.randomUUID().toString();
+
+    BasicProperties props = new BasicProperties
+                                .Builder()
+                                .correlationId(corrId)
+                                .replyTo(replyQueueName)
+                                .build();
+
+    channel.basicPublish(&quot;&quot;, requestQueueName, props, message.getBytes());
+
+    while (true) {
+        QueueingConsumer.Delivery delivery = consumer.nextDelivery();
+        if (delivery.getProperties().getCorrelationId().equals(corrId)) {
+            response = new String(delivery.getBody());
+            break;
+        }
+    }
+
+    return response; 
+}
+
+public void close() throws Exception {
+    connection.close();
+}
+</code></pre><p>客户端代码略微的有点复杂：  </p>
+<blockquote>
+<p>开启连接(Connnection)、通道(Channel)，另外还需要声明一个用于答复的唯一的队列(Queue)。<br>监听回调的队列，以便有结果返回时的感知。<br><code>call</code>方法调用意味着开启RPC请求。<br>首先，生成一个唯一的<code>correlationId</code>，并且保存下来－－后面的<code>while</code>循环会通过它来寻找合适的返回结果。<br>然后将消息给发送出去，消息需要带有两个属性：<code>reployTo</code>和<code>correlationId</code>。<br>这个时候就只需要等待了，直到有匹配的返回信息。<br><code>while</code>循环的内容是非常简单的：对与所有过来的请求都检查一下<code>correlationId</code>是否我们要的那个，如果是的话，就将结果保存下来。<br>最终，将得到的结果返回给用户。  </p>
+</blockquote>
+<p>客户端请求：  </p>
+<pre><code>RPCClient fibonacciRpc = new RPCClient();
+
+System.out.println(&quot; [x] Requesting fib(30)&quot;);   
+String response = fibonacciRpc.call(&quot;30&quot;);
+System.out.println(&quot; [.] Got &apos;&quot; + response + &quot;&apos;&quot;);
+
+fibonacciRpc.close();
+</code></pre><p><br><br><br>————翁英健</p>
+<p>本文地址：<a href="http://wengyingjian.github.io/2015/01/02/rabbitmq-topics/" target="_blank" rel="noopener">http://wengyingjian.github.io/2016/01/02/rabbitmq-topics/</a></p>
+<p>-End-</p>
+<hr>
+</div><div class="tags"><a href="/tags/rabbitmq/">rabbitmq</a><a href="/tags/消息队列/">消息队列</a></div><div class="post-share"><div class="bdsharebuttonbox"><span style="float:left;line-height: 28px;height: 28px;font-size:16px;font-weight:blod">分享到：</span><a href="#" data-cmd="more" class="bds_more"></a><a href="#" data-cmd="mshare" title="分享到一键分享" class="bds_mshare"></a><a href="#" data-cmd="fbook" title="分享到Facebook" class="bds_fbook"></a><a href="#" data-cmd="twi" title="分享到Twitter" class="bds_twi"></a><a href="#" data-cmd="linkedin" title="分享到linkedin" class="bds_linkedin"></a><a href="#" data-cmd="youdao" title="分享到有道云笔记" class="bds_youdao"></a><a href="#" data-cmd="evernotecn" title="分享到印象笔记" class="bds_evernotecn"></a><a href="#" data-cmd="weixin" title="分享到微信" class="bds_weixin"></a><a href="#" data-cmd="qzone" title="分享到QQ空间" class="bds_qzone"></a><a href="#" data-cmd="tsina" title="分享到新浪微博" class="bds_tsina"></a></div></div><div class="post-nav"><a href="/2016/01/03/hexo-blog-helloWorld/" class="pre">Hexo博客搭建（一）－Github Page生效</a><a href="/2016/01/02/hessianrpc-调用与本地调用的比较/" class="next">远程调用与本地调用</a></div><div id="comments"></div></div></div></div><div class="layout-r"><div id="sidebar"><div class="search-pla"></div><div id="toc" class="widget"><div class="widget-title"><i class="fa fa-fei">文章目录</i></div><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#远程方法调用（RPC）"><span class="toc-text">远程方法调用（RPC）</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#客户端接口"><span class="toc-text">客户端接口</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#回调队列"><span class="toc-text">回调队列</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#Correlation-Id"><span class="toc-text">Correlation Id</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#小结"><span class="toc-text">小结</span></a></li></ol></li></ol><li class="toc-item toc-level-3"><a class="toc-link" href="#写代码"><span class="toc-text">写代码</span></a></li></div><div class="widget"><div class="widget-title"><i class="fa fa-xie"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/11/28/idea-license/">IDEA 2016 最新版 激活 破解</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/03/10/nginx-usage-list/">Nginx－虚拟主机、反向代理、负载均衡</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/02/20/wechat-develop/">微信公众号开发</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/02/08/server-gitlab-init/">Centos7 Gitlab 环境搭建</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/02/06/spring-source-load-xml/">Spring源码（一）－读取xml配置</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/02/04/maven-archetype-bugfix/">Maven Archetype编写（二）</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/01/31/maven-archetype-init/">Maven Archetype编写（一）</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/01/23/maven-autoconf-fix/">Maven Autoconf打包问题</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/01/19/docker-what-is/">Docker是什么</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/01/10/nginx-note-reverse-proxy/">Nginx学习笔记（三）－Nginx作为反向代理</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-gui"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/blog/">blog</a><span class="category-list-count">49</span></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-biao"> 标签</i></div><div class="tagcloud"><a href="/tags/性能/" style="font-size: 15px;">性能</a> <a href="/tags/github/" style="font-size: 15px;">github</a> <a href="/tags/helloWorld/" style="font-size: 15px;">helloWorld</a> <a href="/tags/域名/" style="font-size: 15px;">域名</a> <a href="/tags/linux/" style="font-size: 15px;">linux</a> <a href="/tags/随笔/" style="font-size: 15px;">随笔</a> <a href="/tags/docker/" style="font-size: 15px;">docker</a> <a href="/tags/rabbitmq/" style="font-size: 15px;">rabbitmq</a> <a href="/tags/消息队列/" style="font-size: 15px;">消息队列</a> <a href="/tags/hexo/" style="font-size: 15px;">hexo</a> <a href="/tags/自动化工具/" style="font-size: 15px;">自动化工具</a> <a href="/tags/java/" style="font-size: 15px;">java</a> <a href="/tags/404/" style="font-size: 15px;">404</a> <a href="/tags/idea/" style="font-size: 15px;">idea</a> <a href="/tags/部署/" style="font-size: 15px;">部署</a> <a href="/tags/jvm/" style="font-size: 15px;">jvm</a> <a href="/tags/jekyll/" style="font-size: 15px;">jekyll</a> <a href="/tags/内存/" style="font-size: 15px;">内存</a> <a href="/tags/服务器/" style="font-size: 15px;">服务器</a> <a href="/tags/spring/" style="font-size: 15px;">spring</a> <a href="/tags/jenkins/" style="font-size: 15px;">jenkins</a> <a href="/tags/git/" style="font-size: 15px;">git</a> <a href="/tags/maven/" style="font-size: 15px;">maven</a> <a href="/tags/nginx/" style="font-size: 15px;">nginx</a> <a href="/tags/缓存/" style="font-size: 15px;">缓存</a> <a href="/tags/redis/" style="font-size: 15px;">redis</a> <a href="/tags/hudson/" style="font-size: 15px;">hudson</a> <a href="/tags/ubuntu/" style="font-size: 15px;">ubuntu</a> <a href="/tags/tomcat/" style="font-size: 15px;">tomcat</a> <a href="/tags/nexus/" style="font-size: 15px;">nexus</a> <a href="/tags/ssh/" style="font-size: 15px;">ssh</a> <a href="/tags/商品超卖/" style="font-size: 15px;">商品超卖</a> <a href="/tags/数据库/" style="font-size: 15px;">数据库</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-archive"> 归档</i></div><ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">十一月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">三月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">二月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">一月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">十二月 2015</a></li></ul></div></div></div></div><a id="totop" href="#top"></a><div id="footer"><div class="footer-info"><p><a href="/baidusitemap.xml">Baidu Site Haritası</a> |  <a href="/atom.xml">订阅</a> |  <a href="/about/">关于</a></p><p>本站总访问量：<i id="busuanzi_container_site_pv"><i id="busuanzi_value_site_pv"></i></i>次</p><p><span> Copyright &copy;<a href="/." rel="nofollow">authorwyj.</a></span><span> Theme by<a rel="nofollow" target="_blank" href="https://github.com/chaooo/hexo-theme-BlueLake"> BlueLake.</a></span><span> Count by<a href="http://busuanzi.ibruce.info/"> busuanzi.</a></span><span> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a></span></p></div></div></div><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><script type="text/javascript" src="/js/search.json.js?v=2.0.1"></script><script type="text/javascript" src="/js/toctotop.js?v=2.0.1" async></script><script>window._bd_share_config={"common":{"bdSnsKey":{},"bdText":"","bdMini":"2","bdMiniList":["mshare","weixin","tsina","qzone","linkedin","fbook","twi","print","renren","sqq","evernotecn","bdysc","tqq","tqf","bdxc","kaixin001","tieba","douban","bdhome","thx","ibaidu","meilishuo","mogujie","diandian","huaban","duitang","hx","fx","youdao","sdo","qingbiji","people","xinhua","mail","isohu","yaolan","wealink","ty","iguba","h163","copy"],"bdPic":"","bdStyle":"1","bdSize":"16"},"share":{},"image":{"viewList":["tsina","qzone","weixin","fbook","twi","linkedin","youdao","evernotecn","mshare"],"viewText":"分享到：","viewSize":"16"},"selectShare":{"bdContainerClass":null,"bdSelectMiniList":["tsina","qzone","weixin","fbook","twi","linkedin","youdao","evernotecn","mshare"]}};with(document)0[(getElementsByTagName('head')[0]||head).appendChild(createElement('script')).src='http://bdimg.share.baidu.com/static/api/js/share.js?v=89860593.js?cdnversion='+~(-new Date()/36e5)];
+</script></body></html>

@@ -1,0 +1,85 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta name="generator" content="Hexo 3.8.0"><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="description"><meta name="keywords" content="keywords1,keywords2,"><title>利用java小工具实现半自动化部署v2.0 | 翁英健的博客</title><link rel="stylesheet" type="text/css" href="//fonts.neworld.org/css?family=Source+Code+Pro"><link rel="stylesheet" type="text/css" href="/css/style.css?v=2.0.1"><link rel="stylesheet" type="text/css" href="/css/highlight.css?v=2.0.1"><link rel="Shortcut Icon" href="/favicon.ico"><link rel="bookmark" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"><link rel="alternate" type="application/atom+xml" href="/atom.xml"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">利用java小工具实现半自动化部署v2.0</h1><a id="logo" href="/.">翁英健的博客</a><p class="description">subtitle</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div><div id="search-form"><div id="result-mask" class="hide"></div><label><input id="search-key" type="text" autocomplete="off" placeholder="请输入关键字..."></label><div id="result-wrap" class="hide"><div id="search-result"></div></div><div class="hide"><template id="search-tpl"><div class="item"><a href="/{path}" title="{title}"><div class="title">{title}</div><div class="time">{date}</div><div class="tags">{tags}</div></a></div></template></div></div></div><div id="layout" class="layout-g"><div class="layout-l"><div class="content_container"><div class="post"><h1 class="post-title">利用java小工具实现半自动化部署v2.0</h1><div class="post-meta"><a href="/2015/12/18/java-deploy2/#comments" class="comment-count"></a><p><span class="date">Dec 18, 2015</span><span><a href="/categories/blog/" class="category">blog</a></span><span><i id="busuanzi_container_page_pv"><i id="busuanzi_value_page_pv"></i><i>点击</i></i></span></p></div><div class="post-content"><h2 id="回顾"><a href="#回顾" class="headerlink" title="回顾"></a>回顾</h2><p>接着<a href="http://wengyingjian.github.io/2015/12/17/java-deploy" target="_blank" rel="noopener">http://wengyingjian.github.io/2015/12/17/java-deploy</a>的讲。</p>
+<h3 id="已有的功能"><a href="#已有的功能" class="headerlink" title="已有的功能"></a>已有的功能</h3><p>小工具所能完成的功能就是自动化的部署，帮我们做了2件事：</p>
+<blockquote>
+<p>1.sftp传文件。  </p>
+<p>2.自动ssh上去，输出服务器日志到控制台。</p>
+</blockquote>
+<h3 id="需要的操作"><a href="#需要的操作" class="headerlink" title="需要的操作"></a>需要的操作</h3><blockquote>
+<p>1.将工具包（这里时<code>deploy.jar</code>）放到一个固定的目录（这里是<code>~/deploy/</code>）。  </p>
+<p>2.修改<code>~/.bash_profile</code>文件，加入</p>
+</blockquote>
+<pre><code>#alias for deploy
+alias deploy=&apos;java -jar ~/deploy/deploy.jar&apos;
+</code></pre><blockquote>
+<p>这样长串的命令只要<code>deploy</code>就行了。  </p>
+<p>3.在命令行中输入</p>
+</blockquote>
+<pre><code>deploy qa
+</code></pre><blockquote>
+</blockquote>
+<h3 id="其它"><a href="#其它" class="headerlink" title="其它"></a>其它</h3><p>  <strong>一、问题:</strong>  </p>
+<p> 1.有bug，我今天真正用工具类的时候才发现：</p>
+<pre><code>由于properties文件的加载方式为:
+Thread.currentThread().getContextClassLoader().getResourceAsStream(&quot;&quot;);
+所以它加载的是&quot;~/deploy/&quot;路径下的qa-deploy.properties（因为deploy.jar就放在这）。
+
+cp,mv的时候会有确认的提示，这个比较简单，只要修改一下命令即可。
+</code></pre><p> 2.工具的功能有点少：</p>
+<pre><code>开发这个工具的目的，不能忘了。
+是为了省去ssh以及sftp的命令，以及输入密码啥的重复的操作。
+所以可以考虑将能够用到ssh，sftp功能的都自动化一下。
+</code></pre><p> 3.部署的时候却少备份，而且代码结构也比较乱。</p>
+<pre><code>比如说我部署了以后发现新的版本不行，需要换回原来的版本。
+所以说在覆盖之前最好备份。
+</code></pre><p> <strong>二、新版本</strong>  </p>
+<p> 1.为了解决上述的问题，今天也比较空，所以我把上面的版本做了升级。  </p>
+<p> 2.但是之前的版本比较简单，功能也都有了。所以我在git上给上一个版本打了一个tag，叫<code>1.0-version</code>。  </p>
+<p> 3.在<a href="https://github.com/wengyingjian/java-deploy-util.git" target="_blank" rel="noopener">https://github.com/wengyingjian/java-deploy-util.git</a>上我还把打好的jar包放进去了，<code>deploy.jar</code>是v1.0的；<code>deploy-2.0-version.jar</code>就是最新版本的。</p>
+<p> 4.获取到<code>1.0-version</code>.</p>
+<pre><code>下载代码:
+git clone https://github.com/wengyingjian/java-deploy-util.git
+进入目录：
+cd java-deploy-util
+查看标签：
+git tag
+回到tag历史：
+git checkout 1.0-version
+</code></pre><h2 id="新版本"><a href="#新版本" class="headerlink" title="新版本"></a>新版本</h2><h3 id="一、功能"><a href="#一、功能" class="headerlink" title="一、功能"></a>一、功能</h3><p><strong>1.deploy</strong> </p>
+<ul>
+<li><strong>传输</strong>：sftp传输本机上的指定文件到服务器的 . 目录下    </li>
+<li><strong>备份</strong>：（服务器上）将旧的<code>app.war</code>从<code>webapp</code>下<code>cp</code>到<code> . </code>目录下，并且命令为 <code>old-app.war</code>。  </li>
+<li><strong>部署</strong>：（服务器上）将新的<code>app.war</code>从<code> . </code>目录下<code>cp</code>到<code>webapps</code>下。  </li>
+<li><strong>重命名</strong>：（服务器上）将 . 目录下的新的<code>app.war</code>重命名为<code>new-app.war</code>   </li>
+</ul>
+<p><strong>2.shell</strong>  </p>
+<p> 直接开放<code>shell</code>功能，只不过不用输入各种复杂的命令来开启<code>shell</code>功能。  </p>
+<p><strong>3.manual</strong>  </p>
+<p>这个是针对备份用的。<br>在deploy中应该也看到了，最终在 . 目录会有2个文件<code> old-app.war </code>以及<code> new-app.war</code>。<br>想要哪个就把哪个放到<code>webapps</code>下。  </p>
+<p><strong>4.log</strong>  </p>
+<p>有些时候只想看下日志，又不想敲那么多命令。<br>就用它了。  </p>
+<h3 id="二、用法"><a href="#二、用法" class="headerlink" title="二、用法"></a>二、用法</h3><p><strong>1.deploy</strong> </p>
+<p>这个发布一下，只需要知道配置文件即可了。 </p>
+<p><strong>2.shell</strong>  </p>
+<p>也只需要配置文件即可</p>
+<p><strong>3.manual</strong>  </p>
+<p>除了配置文件，还得知道是要将<code> new </code>还是<code> old </code>放上去</p>
+<p><strong>4.log</strong>  </p>
+<p>也只需要配置文件即可</p>
+<p><strong>综上。</strong>  </p>
+<p>1.需要配置文件。<br>2.需要选择模式（不然我怎么知道是<code>deploy,shell,manual</code>还是<code>log</code>）。<br>3.manual还需要 <code>new / old</code>。  </p>
+<p>所以，在<code>~/.bash_profile</code>中加入</p>
+<pre><code>alias deploy=&apos;java -jar ~/deploy/deploy.jar&apos;
+alias deploy-log=&apos;java -jar -Dmode=log ~/deploy/deploy.jar&apos;
+alias deploy-shell=&apos;java -jar -Dmode=shell  ~/deploy/deploy.jar&apos;
+alias deploy-manual=&apos;java -jar -Dmode=manual ~/deploy/deploy.jar&apos;
+</code></pre><p>至于manual，只要<code>deploy-manual a.properties new</code>即可。  </p>
+<h3 id="三、另外。还加入了友好的提示。"><a href="#三、另外。还加入了友好的提示。" class="headerlink" title="三、另外。还加入了友好的提示。"></a>三、另外。还加入了友好的提示。</h3><p>配置文件没指定，提示你输入。  </p>
+<p>manual没选定放谁，提示你输入。  </p>
+<p>现在已经基本不会抛出异常了。 </p>
+<h2 id="最后，我说完了。希望对你们有用。。。"><a href="#最后，我说完了。希望对你们有用。。。" class="headerlink" title="最后，我说完了。希望对你们有用。。。"></a>最后，我说完了。希望对你们有用。。。</h2><h1 id="github地址"><a href="#github地址" class="headerlink" title="github地址"></a>github地址</h1><p><a href="https://github.com/wengyingjian/java-deploy-util.git" target="_blank" rel="noopener">https://github.com/wengyingjian/java-deploy-util.git</a></p>
+<p>————翁英健</p>
+<p>本文地址：<a href="http://wengyingjian.github.io/2015/12/18/java-deploy2" target="_blank" rel="noopener">http://wengyingjian.github.io/2015/12/18/java-deploy2</a></p>
+<p>-End-</p>
+<hr>
+</div><div class="tags"><a href="/tags/自动化工具/">自动化工具</a><a href="/tags/java/">java</a><a href="/tags/部署/">部署</a></div><div class="post-share"><div class="bdsharebuttonbox"><span style="float:left;line-height: 28px;height: 28px;font-size:16px;font-weight:blod">分享到：</span><a href="#" data-cmd="more" class="bds_more"></a><a href="#" data-cmd="mshare" title="分享到一键分享" class="bds_mshare"></a><a href="#" data-cmd="fbook" title="分享到Facebook" class="bds_fbook"></a><a href="#" data-cmd="twi" title="分享到Twitter" class="bds_twi"></a><a href="#" data-cmd="linkedin" title="分享到linkedin" class="bds_linkedin"></a><a href="#" data-cmd="youdao" title="分享到有道云笔记" class="bds_youdao"></a><a href="#" data-cmd="evernotecn" title="分享到印象笔记" class="bds_evernotecn"></a><a href="#" data-cmd="weixin" title="分享到微信" class="bds_weixin"></a><a href="#" data-cmd="qzone" title="分享到QQ空间" class="bds_qzone"></a><a href="#" data-cmd="tsina" title="分享到新浪微博" class="bds_tsina"></a></div></div><div class="post-nav"><a href="/2015/12/20/redis-learn-commands/" class="pre">Redis学习（二）－常用命令</a><a href="/2015/12/17/Jekyll-helloWorld2/" class="next">如何在Github上写博客（二）－开写</a></div><div id="comments"></div></div></div></div><div class="layout-r"><div id="sidebar"><div class="search-pla"></div><div id="toc" class="widget"><div class="widget-title"><i class="fa fa-fei">文章目录</i></div><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#回顾"><span class="toc-text">回顾</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#已有的功能"><span class="toc-text">已有的功能</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#需要的操作"><span class="toc-text">需要的操作</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#其它"><span class="toc-text">其它</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#新版本"><span class="toc-text">新版本</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#一、功能"><span class="toc-text">一、功能</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#二、用法"><span class="toc-text">二、用法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#三、另外。还加入了友好的提示。"><span class="toc-text">三、另外。还加入了友好的提示。</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#最后，我说完了。希望对你们有用。。。"><span class="toc-text">最后，我说完了。希望对你们有用。。。</span></a></li></ol><li class="toc-item toc-level-1"><a class="toc-link" href="#github地址"><span class="toc-text">github地址</span></a></li></div><div class="widget"><div class="widget-title"><i class="fa fa-xie"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/11/28/idea-license/">IDEA 2016 最新版 激活 破解</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/03/10/nginx-usage-list/">Nginx－虚拟主机、反向代理、负载均衡</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/02/20/wechat-develop/">微信公众号开发</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/02/08/server-gitlab-init/">Centos7 Gitlab 环境搭建</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/02/06/spring-source-load-xml/">Spring源码（一）－读取xml配置</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/02/04/maven-archetype-bugfix/">Maven Archetype编写（二）</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/01/31/maven-archetype-init/">Maven Archetype编写（一）</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/01/23/maven-autoconf-fix/">Maven Autoconf打包问题</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/01/19/docker-what-is/">Docker是什么</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/01/10/nginx-note-reverse-proxy/">Nginx学习笔记（三）－Nginx作为反向代理</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-gui"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/blog/">blog</a><span class="category-list-count">49</span></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-biao"> 标签</i></div><div class="tagcloud"><a href="/tags/性能/" style="font-size: 15px;">性能</a> <a href="/tags/github/" style="font-size: 15px;">github</a> <a href="/tags/helloWorld/" style="font-size: 15px;">helloWorld</a> <a href="/tags/域名/" style="font-size: 15px;">域名</a> <a href="/tags/linux/" style="font-size: 15px;">linux</a> <a href="/tags/随笔/" style="font-size: 15px;">随笔</a> <a href="/tags/docker/" style="font-size: 15px;">docker</a> <a href="/tags/rabbitmq/" style="font-size: 15px;">rabbitmq</a> <a href="/tags/消息队列/" style="font-size: 15px;">消息队列</a> <a href="/tags/hexo/" style="font-size: 15px;">hexo</a> <a href="/tags/自动化工具/" style="font-size: 15px;">自动化工具</a> <a href="/tags/java/" style="font-size: 15px;">java</a> <a href="/tags/404/" style="font-size: 15px;">404</a> <a href="/tags/idea/" style="font-size: 15px;">idea</a> <a href="/tags/部署/" style="font-size: 15px;">部署</a> <a href="/tags/jvm/" style="font-size: 15px;">jvm</a> <a href="/tags/jekyll/" style="font-size: 15px;">jekyll</a> <a href="/tags/内存/" style="font-size: 15px;">内存</a> <a href="/tags/服务器/" style="font-size: 15px;">服务器</a> <a href="/tags/spring/" style="font-size: 15px;">spring</a> <a href="/tags/jenkins/" style="font-size: 15px;">jenkins</a> <a href="/tags/git/" style="font-size: 15px;">git</a> <a href="/tags/maven/" style="font-size: 15px;">maven</a> <a href="/tags/nginx/" style="font-size: 15px;">nginx</a> <a href="/tags/缓存/" style="font-size: 15px;">缓存</a> <a href="/tags/redis/" style="font-size: 15px;">redis</a> <a href="/tags/hudson/" style="font-size: 15px;">hudson</a> <a href="/tags/ubuntu/" style="font-size: 15px;">ubuntu</a> <a href="/tags/tomcat/" style="font-size: 15px;">tomcat</a> <a href="/tags/nexus/" style="font-size: 15px;">nexus</a> <a href="/tags/ssh/" style="font-size: 15px;">ssh</a> <a href="/tags/商品超卖/" style="font-size: 15px;">商品超卖</a> <a href="/tags/数据库/" style="font-size: 15px;">数据库</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-archive"> 归档</i></div><ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">十一月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">三月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">二月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">一月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">十二月 2015</a></li></ul></div></div></div></div><a id="totop" href="#top"></a><div id="footer"><div class="footer-info"><p><a href="/baidusitemap.xml">Baidu Site Haritası</a> |  <a href="/atom.xml">订阅</a> |  <a href="/about/">关于</a></p><p>本站总访问量：<i id="busuanzi_container_site_pv"><i id="busuanzi_value_site_pv"></i></i>次</p><p><span> Copyright &copy;<a href="/." rel="nofollow">authorwyj.</a></span><span> Theme by<a rel="nofollow" target="_blank" href="https://github.com/chaooo/hexo-theme-BlueLake"> BlueLake.</a></span><span> Count by<a href="http://busuanzi.ibruce.info/"> busuanzi.</a></span><span> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a></span></p></div></div></div><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><script type="text/javascript" src="/js/search.json.js?v=2.0.1"></script><script type="text/javascript" src="/js/toctotop.js?v=2.0.1" async></script><script>window._bd_share_config={"common":{"bdSnsKey":{},"bdText":"","bdMini":"2","bdMiniList":["mshare","weixin","tsina","qzone","linkedin","fbook","twi","print","renren","sqq","evernotecn","bdysc","tqq","tqf","bdxc","kaixin001","tieba","douban","bdhome","thx","ibaidu","meilishuo","mogujie","diandian","huaban","duitang","hx","fx","youdao","sdo","qingbiji","people","xinhua","mail","isohu","yaolan","wealink","ty","iguba","h163","copy"],"bdPic":"","bdStyle":"1","bdSize":"16"},"share":{},"image":{"viewList":["tsina","qzone","weixin","fbook","twi","linkedin","youdao","evernotecn","mshare"],"viewText":"分享到：","viewSize":"16"},"selectShare":{"bdContainerClass":null,"bdSelectMiniList":["tsina","qzone","weixin","fbook","twi","linkedin","youdao","evernotecn","mshare"]}};with(document)0[(getElementsByTagName('head')[0]||head).appendChild(createElement('script')).src='http://bdimg.share.baidu.com/static/api/js/share.js?v=89860593.js?cdnversion='+~(-new Date()/36e5)];
+</script></body></html>

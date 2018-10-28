@@ -1,0 +1,183 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta name="generator" content="Hexo 3.8.0"><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="description"><meta name="keywords" content="keywords1,keywords2,"><title>Nginx学习笔记（二）－配置指南 | 翁英健的博客</title><link rel="stylesheet" type="text/css" href="//fonts.neworld.org/css?family=Source+Code+Pro"><link rel="stylesheet" type="text/css" href="/css/style.css?v=2.0.1"><link rel="stylesheet" type="text/css" href="/css/highlight.css?v=2.0.1"><link rel="Shortcut Icon" href="/favicon.ico"><link rel="bookmark" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"><link rel="alternate" type="application/atom+xml" href="/atom.xml"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">Nginx学习笔记（二）－配置指南</h1><a id="logo" href="/.">翁英健的博客</a><p class="description">subtitle</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div><div id="search-form"><div id="result-mask" class="hide"></div><label><input id="search-key" type="text" autocomplete="off" placeholder="请输入关键字..."></label><div id="result-wrap" class="hide"><div id="search-result"></div></div><div class="hide"><template id="search-tpl"><div class="item"><a href="/{path}" title="{title}"><div class="title">{title}</div><div class="time">{date}</div><div class="tags">{tags}</div></a></div></template></div></div></div><div id="layout" class="layout-g"><div class="layout-l"><div class="content_container"><div class="post"><h1 class="post-title">Nginx学习笔记（二）－配置指南</h1><div class="post-meta"><a href="/2016/01/10/nginx-note-config/#comments" class="comment-count"></a><p><span class="date">Jan 10, 2016</span><span><a href="/categories/blog/" class="category">blog</a></span><span><i id="busuanzi_container_page_pv"><i id="busuanzi_value_page_pv"></i><i>点击</i></i></span></p></div><div class="post-content"><h1 id="基本配置格式"><a href="#基本配置格式" class="headerlink" title="基本配置格式"></a>基本配置格式</h1><p>基本的Nginx配置文件由若干部分组成。每一个部分都是通过下列方法定义的。  </p>
+<pre><code>&lt;section&gt; {
+    &lt;directive&gt; &lt;parameters&gt;;
+}
+</code></pre><p><strong>说明：</strong>  </p>
+<p>每一个指令行都由分号<code>;</code>结束，这标记着一行的结束。<br>大括号<code>{}</code>实际上表示一个新上下文（context），但是大多数情况下我们将他们作为“节、部分（section）”来读。  </p>
+<h1 id="Nginx全局配置参数"><a href="#Nginx全局配置参数" class="headerlink" title="Nginx全局配置参数"></a>Nginx全局配置参数</h1><p>全局配置部分被用于配置对整个server都有效的参数和前一个章节中的例外格式。全局部分可能包含配置指令，例如<code>user</code>和<code>worker_processes</code>，这里没有大括号<code>{}</code>包围全局部分。  </p>
+<p>全局配置指令：<br><img src="http://images2015.cnblogs.com/blog/842598/201601/842598-20160110125603450-1195119789.png" alt="">  </p>
+<p>简短的例子(<code>nginx.conf</code>)：  </p>
+<pre><code>#使用用户www来运行
+user www;
+#1个工作线程
+worker_processes  1;
+
+#显式指定error log日志存放路径
+#error_log  logs/error.log;
+#error_log  logs/error.log  notice;
+#error_log  logs/error.log  info;
+
+#显式指定pid文件存放路径
+#pid        logs/nginx.pid;
+
+#为events模块配置一个新的上下文
+events {
+#最大连接数
+    worker_connections  1024;
+}
+</code></pre><h1 id="使用include文件"><a href="#使用include文件" class="headerlink" title="使用include文件"></a>使用include文件</h1><p>在Nginx配置文件中，include文件可以在任何地方。<br>只要保证被include的文件符合正确的Nginx语法（即配置指令和块），然后指定这些文件的路径即可。  </p>
+<p>demo(<code>nginx.conf</code>)：  </p>
+<pre><code>include mine.types;
+</code></pre><p>以上的<code>mine.types</code>是相对路径的表示方法，则依据主配置文件<code>nginx.conf</code>路径进行搜索。  </p>
+<p><code>nginx.conf</code>文件的绝对路径为<code>/opt/nginx/conf/nginx.conf</code>，则以上配置等价于：</p>
+<pre><code>include /opt/nginx/conf/mine.types;
+</code></pre><h2 id="通配符"><a href="#通配符" class="headerlink" title="通配符"></a>通配符</h2><p>在路径中出现通配符可以表示多个配置文件。  </p>
+<p>demo:  </p>
+<pre><code>include /opt/nginx/conf/*.types; 
+</code></pre><h2 id="测试配置文件"><a href="#测试配置文件" class="headerlink" title="测试配置文件"></a>测试配置文件</h2><p>要想测试配置文件（包括include内容）语法是否正确，可用以下命令进行测试：  </p>
+<pre><code>nginx -t -c &lt;path-to-nginx.conf&gt;    
+</code></pre><p><img src="http://images2015.cnblogs.com/blog/842598/201601/842598-20160110131332231-851007967.png" alt=""></p>
+<h1 id="Http的server部分"><a href="#Http的server部分" class="headerlink" title="Http的server部分"></a>Http的server部分</h1><h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>在Http中，server部分或者是Http配置context都是可用的，除非在编译安装Nginx时没有包含Http模块（<code>--without-http</code>）。<br>这部分控制了Http模块的方方面面，是使用最多的一个部分。  </p>
+<p>本部分的指令用于处理Http连接，因此该模块提供了相当数量的指令。为了更容易理解这些指令，我们将它们划分为不同的类型来讲述。  </p>
+<h2 id="客户端指令"><a href="#客户端指令" class="headerlink" title="客户端指令"></a>客户端指令</h2><p>这一组指令用于处理客户端连接本身的各个方面，以及不同类型的客户端。<br><img src="http://images2015.cnblogs.com/blog/842598/201601/842598-20160110131901403-1506126564.png" alt=""><br><img src="http://images2015.cnblogs.com/blog/842598/201601/842598-20160110131910481-511195115.png" alt=""></p>
+<h2 id="文件I-O指令"><a href="#文件I-O指令" class="headerlink" title="文件I/O指令"></a>文件I/O指令</h2><p>这些指令用于控制Nginx如何投递静态文件，以及如何管理文件描述符。<br><img src="http://images2015.cnblogs.com/blog/842598/201601/842598-20160110132002746-279439449.png" alt=""><br><img src="http://images2015.cnblogs.com/blog/842598/201601/842598-20160110132008903-305532260.png" alt=""></p>
+<h2 id="Hash指令"><a href="#Hash指令" class="headerlink" title="Hash指令"></a>Hash指令</h2><p>这组hash指令控制Nginx分配给某些变量多大的静态内存。</p>
+<p>在启动和重新配置时，Nginx会计算需要的最小值。在Nginx发出警告时，你几乎只需要调整一个<code>*_hash_max_size</code> 指令的参数就可以达到效果。<code>*_hash_bucket_size</code>变量被设置了默认值，以便满足多处理器缓存行降低检索需要的检索查找，因此基本不需要改变，格外更详细的内容参考<a href="http://nginx.org/en/docs/hash.html" target="_blank" rel="noopener">http://nginx.org/en/docs/hash.html</a><br><img src="http://images2015.cnblogs.com/blog/842598/201601/842598-20160110132055996-1808019028.png" alt=""></p>
+<h2 id="Socket指令"><a href="#Socket指令" class="headerlink" title="Socket指令"></a>Socket指令</h2><p>这些指令描述了Nginx如何设置创建TCP套接字的变量选项。<br><img src="http://images2015.cnblogs.com/blog/842598/201601/842598-20160110132109840-674711776.png" alt=""></p>
+<h2 id="示例配置文件"><a href="#示例配置文件" class="headerlink" title="示例配置文件"></a>示例配置文件</h2><p>demo：  </p>
+<pre><code>http {
+    include mime.types;
+    default_type application/octet-stream;
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    keepalive_timeout 65;
+    server_names_hash_max_size 1024;
+}  
+</code></pre><p>在<code>nginx.conf</code>文件中上面的这部分内容跟随在全局配置指令之后。  </p>
+<h1 id="虚拟服务器部分"><a href="#虚拟服务器部分" class="headerlink" title="虚拟服务器部分"></a>虚拟服务器部分</h1><h2 id="概述-1"><a href="#概述-1" class="headerlink" title="概述"></a>概述</h2><p>任何由关键字<code>server</code>开始的部分都被称作“虚拟服务器”部分。<br>它描述的是一组根据<code>server_name</code>指令逻辑分割的资源，这些虚拟服务器响应Http请求，因此它们都包含在http部分中。  </p>
+<p>一个虚拟服务器由<code>listen</code>和<code>server_name</code>指令组合定义。</p>
+<h2 id="listen指令"><a href="#listen指令" class="headerlink" title="listen指令"></a>listen指令</h2><p><code>listen</code>指令定义了一个IP地址/端口组合或者是UNIX域套接字路径。  </p>
+<pre><code>listen address[:port];
+listen port;
+listen unix:path;
+</code></pre><p><code>listen</code>指令还有一些其他的可选参数</p>
+<h3 id="listen指令的参数"><a href="#listen指令的参数" class="headerlink" title="listen指令的参数"></a>listen指令的参数</h3><p><img src="http://images2015.cnblogs.com/blog/842598/201601/842598-20160110134452950-383880445.png" alt=""></p>
+<h2 id="server-name指令"><a href="#server-name指令" class="headerlink" title="server_name指令"></a>server_name指令</h2><p><code>server_name</code>指令可以用来解决一些配置问题。 </p>
+<h3 id="默认值"><a href="#默认值" class="headerlink" title="默认值"></a>默认值</h3><p>它的默认值为<code>&quot;&quot;</code>，这意味着server部分没有<code>server_name</code>指令，对于没有设置Host头字段的请求将会匹配该server处理。我们就可以设置这个server来丢弃这种缺乏Host头的请求：  </p>
+<pre><code>server {
+    listen 80;
+    return 444;
+}
+</code></pre><p>这里是用Http非标准代码<code>444</code>使得Nginx立即关闭一个连接。  </p>
+<h3 id="通配符-1"><a href="#通配符-1" class="headerlink" title="通配符"></a>通配符</h3><ol>
+<li>通配符可以替代部分子域名：<code>*.example.com</code>。</li>
+<li>通配符可以替代顶级域部分：<code>www.example.*</code>。</li>
+<li>一种特殊形式将匹配子域或域本身。</li>
+</ol>
+<p><code>.example.com</code>匹配<code>*.example.com</code>也包括<code>example.com</code></p>
+<h4 id="正则表达式"><a href="#正则表达式" class="headerlink" title="正则表达式"></a>正则表达式</h4><p>通过在域名前面加上波浪号（<code>~</code>），正则表达式可以被作为参数应用于<code>server_name</code>：  </p>
+<pre><code>server_name~^www\.example\.com$;
+server_name~^www(\d+).example\.(com)$;
+</code></pre><p>后一种形式是利用捕获，可以在以后引用中进一步设置（用<code>$1</code>,<code>$2</code>等）指令中使用。  </p>
+<h2 id="服务器绑定遵循逻辑"><a href="#服务器绑定遵循逻辑" class="headerlink" title="服务器绑定遵循逻辑"></a>服务器绑定遵循逻辑</h2><p>对于一个特定的请求，确定哪些虚拟服务器提供该请求的服务时，应该遵循以下的逻辑：  </p>
+<ol>
+<li>匹配IP地址和<code>listen</code>指令指定的端口。</li>
+<li>将Host头字段作为一个字符串匹配<code>server_name</code>指令。</li>
+<li>将Host头字段与<code>server_name</code>指令值字符串的开始部分做匹配。</li>
+<li>将Host头字段与<code>server_name</code>指令值字符串的尾部分做匹配。</li>
+<li>将Host头字段与<code>server_name</code>指令值进行正则表达式匹配。</li>
+<li>如果所有Host头匹配失败，那么将会转向<code>listen</code>指令标记的<code>default_server</code>。</li>
+<li>如果所有的Host头匹配失败，并且没有<code>default_server</code>，那么将会转向第一个server的<code>listen</code>指令，以满足第一步。  </li>
+</ol>
+<p>逻辑图：<br><img src="http://images2015.cnblogs.com/blog/842598/201601/842598-20160110141351590-484523422.png" alt=""></p>
+<h2 id="default-server"><a href="#default-server" class="headerlink" title="default_server"></a>default_server</h2><p><code>default_server</code>被用于处理其他方式没有处理的请求。因此推荐总是明确地设置<code>default_server</code>，以便这些没有被处理的请求通过这种定义的方式处理。  </p>
+<p>出了这个用法以外，<code>default_server</code>也可以使用同样的<code>listen</code>指令配置若干个虚拟服务器。这里设置的任何指令都将会在匹配的server区段有效。  </p>
+<h1 id="Locations-where-when-how"><a href="#Locations-where-when-how" class="headerlink" title="Locations-where,when,how"></a>Locations-where,when,how</h1><h2 id="概述-2"><a href="#概述-2" class="headerlink" title="概述"></a>概述</h2><p>location指令可以用在虚拟服务器server部分，并且意味着提供来自客户端的URI或者内部重定向访问。除少数情况外，location也可以被嵌套使用，它们被称作为特定的配置尽可能地处理请求。  </p>
+<h2 id="location定义"><a href="#location定义" class="headerlink" title="location定义"></a>location定义</h2><pre><code>location [modifier] uri {
+    ...
+}
+</code></pre><p>或者是命名location:</p>
+<pre><code>location @name {
+    ...
+}
+</code></pre><p>命令location仅对内部访问重定向，在进入一个location之前它会保留被请求的URI部分。命名location只能够在server级别定义。  </p>
+<h2 id="修饰符-modifier"><a href="#修饰符-modifier" class="headerlink" title="修饰符(modifier)"></a>修饰符(modifier)</h2><p><img src="http://images2015.cnblogs.com/blog/842598/201601/842598-20160110143757965-228135102.png" alt=""></p>
+<h2 id="location匹配"><a href="#location匹配" class="headerlink" title="location匹配"></a>location匹配</h2><p>当一个请求进入时，URI将会被检测匹配一个最佳的location。</p>
+<ul>
+<li>没有正则表达式的location被作为最佳的匹配，独立于含有正则表达式的location顺序。</li>
+<li>在配置文件中按照查找顺序进行正则表达式匹配，在查找第一个正则表达式匹配之后结束查找，那么就由这个最佳的location提供请求处理。</li>
+</ul>
+<p>这里比较匹配描述的是解码URI，例如，在URI中的<code>%20</code>，将会匹配location中的<code></code>（空格）。  </p>
+<p>命名location仅可以在location中使用。</p>
+<h2 id="指令"><a href="#指令" class="headerlink" title="指令"></a>指令</h2><h3 id="仅用于location中的指令"><a href="#仅用于location中的指令" class="headerlink" title="仅用于location中的指令"></a>仅用于location中的指令</h3><p><img src="http://images2015.cnblogs.com/blog/842598/201601/842598-20160110145113840-384830365.png" alt=""></p>
+<h3 id="其它指令"><a href="#其它指令" class="headerlink" title="其它指令"></a>其它指令</h3><p>另外，http部分的其他指令也可以在location中指定。</p>
+<h3 id="try-files"><a href="#try-files" class="headerlink" title="try_files"></a>try_files</h3><p>指令<code>try_files</code>可以用在server部分，但是最常见的还是在location部分中。<code>try_files</code>指令将会按照给定它的参数列出的顺序进行尝试，第一个被匹配的将会被使用。  </p>
+<p>它经常被用于从一个变量去匹配另一个可能的文件，然后将处理传递到一个命名location，看下面的例子：  </p>
+<pre><code>location / {
+    try_files $url $url/ @mongrel;
+}
+
+location @mongrel {
+    proxy_pass http://appserver;
+}
+</code></pre><p>这里有一个隐含的目录索引，如果给定的URI作为一个文件没有被找到，那么处理将会通过代理被传递到appserver。</p>
+<h2 id="location嵌套"><a href="#location嵌套" class="headerlink" title="location嵌套"></a>location嵌套</h2><p>除了以下前缀外，locations可以被嵌套。</p>
+<ul>
+<li>具有<code>=</code>前缀</li>
+<li>命名location</li>
+</ul>
+<p>最佳时间表明正则表达式location被嵌套在基于字符串的location，看下面的例子：</p>
+<pre><code>#首先进入根路径
+location / {
+
+    #符合/css路径的最佳匹配位置
+    location ^~ /css {
+
+        #匹配正则
+        location~* /css/.*\.css$ {
+
+        }
+    }
+}
+</code></pre><h1 id="完整的示例配置文件"><a href="#完整的示例配置文件" class="headerlink" title="完整的示例配置文件"></a>完整的示例配置文件</h1><p>以下示例是一个样本配置文件：  </p>
+<pre><code>user www;
+worker_processes 12;
+error_log /var/log/nginx/error.log;
+pid /var/run/nginx.pid;
+events {
+    use /dev/poll;
+    worker_connections 2048;
+}
+http {
+    include mime.types;
+    default_type application/octet-stream;
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    keepalive_timeout 65;
+    server_name_hash_max_size 1024;
+
+    server {
+        listen 80;
+        return 444;
+    }
+    server {
+        listen 80;
+        server_name www.example.com;
+        location / {
+            try_files $url $url/ @mongrel;
+        }
+        location @mongrel {
+            proxy_pass http://127.0.0.1:8080;
+        }
+    }
+}
+</code></pre><h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><p>在本章中，我们看到了如何构建Nginx的配置文件。模块化的本质值得思考，从某种意义上讲，Nginx本身也是模块化的。全局的配置区段负责各个方面，对于Nginx来说是一个整体。Nginx负责处理的每一种协议单独成为一个部分。我们还可以通过在这些协议配置内（http或者mail）指定server来定义每一个请求如何被处理，以便请求被路由到特定的IP地址和端口上。在http区段中，使用locations来匹配URI请求，这些locations可以嵌套使用，或者按照其他顺序使用，以确保请求被路由到正确的文件系统区域或者应用程序服务器。  </p>
+<p>本章没有涵盖编译到二进制Nginx命令中各种模块提供的配置选项，这些额外的指令将会遍及本书的始终，因此特定的模块被用于解决一个问题。对于Nginx配置中的变量也没有解释，这些变量也将会在后边的内容中讨论。</p>
+<p><br><br><br>————翁英健</p>
+<p>本文地址：<a href="http://wengyingjian.github.io/2016/01/10/nginx-note-config/" target="_blank" rel="noopener">http://wengyingjian.github.io/2016/01/10/nginx-note-config/</a></p>
+<p>-End-</p>
+<hr>
+</div><div class="tags"><a href="/tags/linux/">linux</a><a href="/tags/服务器/">服务器</a><a href="/tags/nginx/">nginx</a></div><div class="post-share"><div class="bdsharebuttonbox"><span style="float:left;line-height: 28px;height: 28px;font-size:16px;font-weight:blod">分享到：</span><a href="#" data-cmd="more" class="bds_more"></a><a href="#" data-cmd="mshare" title="分享到一键分享" class="bds_mshare"></a><a href="#" data-cmd="fbook" title="分享到Facebook" class="bds_fbook"></a><a href="#" data-cmd="twi" title="分享到Twitter" class="bds_twi"></a><a href="#" data-cmd="linkedin" title="分享到linkedin" class="bds_linkedin"></a><a href="#" data-cmd="youdao" title="分享到有道云笔记" class="bds_youdao"></a><a href="#" data-cmd="evernotecn" title="分享到印象笔记" class="bds_evernotecn"></a><a href="#" data-cmd="weixin" title="分享到微信" class="bds_weixin"></a><a href="#" data-cmd="qzone" title="分享到QQ空间" class="bds_qzone"></a><a href="#" data-cmd="tsina" title="分享到新浪微博" class="bds_tsina"></a></div></div><div class="post-nav"><a href="/2016/01/10/nginx-note-reverse-proxy/" class="pre">Nginx学习笔记（三）－Nginx作为反向代理</a><a href="/2016/01/09/debian-users/" class="next">Debian用户管理</a></div><div id="comments"></div></div></div></div><div class="layout-r"><div id="sidebar"><div class="search-pla"></div><div id="toc" class="widget"><div class="widget-title"><i class="fa fa-fei">文章目录</i></div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#基本配置格式"><span class="toc-text">基本配置格式</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Nginx全局配置参数"><span class="toc-text">Nginx全局配置参数</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#使用include文件"><span class="toc-text">使用include文件</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#通配符"><span class="toc-text">通配符</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#测试配置文件"><span class="toc-text">测试配置文件</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Http的server部分"><span class="toc-text">Http的server部分</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#概述"><span class="toc-text">概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#客户端指令"><span class="toc-text">客户端指令</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#文件I-O指令"><span class="toc-text">文件I/O指令</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Hash指令"><span class="toc-text">Hash指令</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Socket指令"><span class="toc-text">Socket指令</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#示例配置文件"><span class="toc-text">示例配置文件</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#虚拟服务器部分"><span class="toc-text">虚拟服务器部分</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#概述-1"><span class="toc-text">概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#listen指令"><span class="toc-text">listen指令</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#listen指令的参数"><span class="toc-text">listen指令的参数</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#server-name指令"><span class="toc-text">server_name指令</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#默认值"><span class="toc-text">默认值</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#通配符-1"><span class="toc-text">通配符</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#正则表达式"><span class="toc-text">正则表达式</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#服务器绑定遵循逻辑"><span class="toc-text">服务器绑定遵循逻辑</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#default-server"><span class="toc-text">default_server</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Locations-where-when-how"><span class="toc-text">Locations-where,when,how</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#概述-2"><span class="toc-text">概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#location定义"><span class="toc-text">location定义</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#修饰符-modifier"><span class="toc-text">修饰符(modifier)</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#location匹配"><span class="toc-text">location匹配</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#指令"><span class="toc-text">指令</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#仅用于location中的指令"><span class="toc-text">仅用于location中的指令</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#其它指令"><span class="toc-text">其它指令</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#try-files"><span class="toc-text">try_files</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#location嵌套"><span class="toc-text">location嵌套</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#完整的示例配置文件"><span class="toc-text">完整的示例配置文件</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#总结"><span class="toc-text">总结</span></a></li></ol></div><div class="widget"><div class="widget-title"><i class="fa fa-xie"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/11/28/idea-license/">IDEA 2016 最新版 激活 破解</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/03/10/nginx-usage-list/">Nginx－虚拟主机、反向代理、负载均衡</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/02/20/wechat-develop/">微信公众号开发</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/02/08/server-gitlab-init/">Centos7 Gitlab 环境搭建</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/02/06/spring-source-load-xml/">Spring源码（一）－读取xml配置</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/02/04/maven-archetype-bugfix/">Maven Archetype编写（二）</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/01/31/maven-archetype-init/">Maven Archetype编写（一）</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/01/23/maven-autoconf-fix/">Maven Autoconf打包问题</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/01/19/docker-what-is/">Docker是什么</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/01/10/nginx-note-reverse-proxy/">Nginx学习笔记（三）－Nginx作为反向代理</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-gui"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/blog/">blog</a><span class="category-list-count">49</span></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-biao"> 标签</i></div><div class="tagcloud"><a href="/tags/性能/" style="font-size: 15px;">性能</a> <a href="/tags/github/" style="font-size: 15px;">github</a> <a href="/tags/helloWorld/" style="font-size: 15px;">helloWorld</a> <a href="/tags/域名/" style="font-size: 15px;">域名</a> <a href="/tags/linux/" style="font-size: 15px;">linux</a> <a href="/tags/随笔/" style="font-size: 15px;">随笔</a> <a href="/tags/docker/" style="font-size: 15px;">docker</a> <a href="/tags/rabbitmq/" style="font-size: 15px;">rabbitmq</a> <a href="/tags/消息队列/" style="font-size: 15px;">消息队列</a> <a href="/tags/hexo/" style="font-size: 15px;">hexo</a> <a href="/tags/自动化工具/" style="font-size: 15px;">自动化工具</a> <a href="/tags/java/" style="font-size: 15px;">java</a> <a href="/tags/404/" style="font-size: 15px;">404</a> <a href="/tags/idea/" style="font-size: 15px;">idea</a> <a href="/tags/部署/" style="font-size: 15px;">部署</a> <a href="/tags/jvm/" style="font-size: 15px;">jvm</a> <a href="/tags/jekyll/" style="font-size: 15px;">jekyll</a> <a href="/tags/内存/" style="font-size: 15px;">内存</a> <a href="/tags/服务器/" style="font-size: 15px;">服务器</a> <a href="/tags/spring/" style="font-size: 15px;">spring</a> <a href="/tags/jenkins/" style="font-size: 15px;">jenkins</a> <a href="/tags/git/" style="font-size: 15px;">git</a> <a href="/tags/maven/" style="font-size: 15px;">maven</a> <a href="/tags/nginx/" style="font-size: 15px;">nginx</a> <a href="/tags/缓存/" style="font-size: 15px;">缓存</a> <a href="/tags/redis/" style="font-size: 15px;">redis</a> <a href="/tags/hudson/" style="font-size: 15px;">hudson</a> <a href="/tags/ubuntu/" style="font-size: 15px;">ubuntu</a> <a href="/tags/tomcat/" style="font-size: 15px;">tomcat</a> <a href="/tags/nexus/" style="font-size: 15px;">nexus</a> <a href="/tags/ssh/" style="font-size: 15px;">ssh</a> <a href="/tags/商品超卖/" style="font-size: 15px;">商品超卖</a> <a href="/tags/数据库/" style="font-size: 15px;">数据库</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-archive"> 归档</i></div><ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">十一月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">三月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">二月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">一月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">十二月 2015</a></li></ul></div></div></div></div><a id="totop" href="#top"></a><div id="footer"><div class="footer-info"><p><a href="/baidusitemap.xml">Baidu Site Haritası</a> |  <a href="/atom.xml">订阅</a> |  <a href="/about/">关于</a></p><p>本站总访问量：<i id="busuanzi_container_site_pv"><i id="busuanzi_value_site_pv"></i></i>次</p><p><span> Copyright &copy;<a href="/." rel="nofollow">authorwyj.</a></span><span> Theme by<a rel="nofollow" target="_blank" href="https://github.com/chaooo/hexo-theme-BlueLake"> BlueLake.</a></span><span> Count by<a href="http://busuanzi.ibruce.info/"> busuanzi.</a></span><span> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a></span></p></div></div></div><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><script type="text/javascript" src="/js/search.json.js?v=2.0.1"></script><script type="text/javascript" src="/js/toctotop.js?v=2.0.1" async></script><script>window._bd_share_config={"common":{"bdSnsKey":{},"bdText":"","bdMini":"2","bdMiniList":["mshare","weixin","tsina","qzone","linkedin","fbook","twi","print","renren","sqq","evernotecn","bdysc","tqq","tqf","bdxc","kaixin001","tieba","douban","bdhome","thx","ibaidu","meilishuo","mogujie","diandian","huaban","duitang","hx","fx","youdao","sdo","qingbiji","people","xinhua","mail","isohu","yaolan","wealink","ty","iguba","h163","copy"],"bdPic":"","bdStyle":"1","bdSize":"16"},"share":{},"image":{"viewList":["tsina","qzone","weixin","fbook","twi","linkedin","youdao","evernotecn","mshare"],"viewText":"分享到：","viewSize":"16"},"selectShare":{"bdContainerClass":null,"bdSelectMiniList":["tsina","qzone","weixin","fbook","twi","linkedin","youdao","evernotecn","mshare"]}};with(document)0[(getElementsByTagName('head')[0]||head).appendChild(createElement('script')).src='http://bdimg.share.baidu.com/static/api/js/share.js?v=89860593.js?cdnversion='+~(-new Date()/36e5)];
+</script></body></html>

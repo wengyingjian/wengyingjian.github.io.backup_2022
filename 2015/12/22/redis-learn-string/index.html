@@ -1,0 +1,116 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta name="generator" content="Hexo 3.8.0"><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="description"><meta name="keywords" content="keywords1,keywords2,"><title>Redis学习（三）－字符串 | 翁英健的博客</title><link rel="stylesheet" type="text/css" href="//fonts.neworld.org/css?family=Source+Code+Pro"><link rel="stylesheet" type="text/css" href="/css/style.css?v=2.0.1"><link rel="stylesheet" type="text/css" href="/css/highlight.css?v=2.0.1"><link rel="Shortcut Icon" href="/favicon.ico"><link rel="bookmark" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"><link rel="alternate" type="application/atom+xml" href="/atom.xml"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">Redis学习（三）－字符串</h1><a id="logo" href="/.">翁英健的博客</a><p class="description">subtitle</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div><div id="search-form"><div id="result-mask" class="hide"></div><label><input id="search-key" type="text" autocomplete="off" placeholder="请输入关键字..."></label><div id="result-wrap" class="hide"><div id="search-result"></div></div><div class="hide"><template id="search-tpl"><div class="item"><a href="/{path}" title="{title}"><div class="title">{title}</div><div class="time">{date}</div><div class="tags">{tags}</div></a></div></template></div></div></div><div id="layout" class="layout-g"><div class="layout-l"><div class="content_container"><div class="post"><h1 class="post-title">Redis学习（三）－字符串</h1><div class="post-meta"><a href="/2015/12/22/redis-learn-string/#comments" class="comment-count"></a><p><span class="date">Dec 22, 2015</span><span><a href="/categories/blog/" class="category">blog</a></span><span><i id="busuanzi_container_page_pv"><i id="busuanzi_value_page_pv"></i><i>点击</i></i></span></p></div><div class="post-content"><h1 id="命令"><a href="#命令" class="headerlink" title="命令"></a>命令</h1><p><strong>1.set</strong></p>
+<pre><code>SET key value
+</code></pre><p>将key和value对应。如果key已经存在了，它会被覆盖，而不管它是什么类型。  </p>
+<p>返回:OK  </p>
+<p>时间复杂度：<br>O(1) </p>
+<p><strong>2.get</strong></p>
+<pre><code>GET key
+</code></pre><p>返回key的value。<br>如果key不存在，返回特殊值nil。<br>如果key的value不是string，就返回错误，因为GET只处理string类型的values。     </p>
+<p>返回：Bulk replies：key对应的value，或者nil（key不存在）  </p>
+<p>时间复杂度：O(1)  </p>
+<p><strong>3.mset</strong>  </p>
+<pre><code>MSET key value [key value ...]
+</code></pre><p>对应给定的keys到他们相应的values上。MSET会用新的value替换已经存在的value，就像普通的SET命令一样。如果你不想覆盖已经存在的values，请参看命令MSETNX。<br>MSET是原子的，所以所有给定的keys是一次性set的。客户端不可能看到这种一部分keys被更新而另外的没有改变的情况。  </p>
+<p>返回：OK  </p>
+<p>时间复杂度：O(N)，这里N是要set的key的个数。  </p>
+<p><strong>4.mget</strong></p>
+<pre><code>MGET key [key ...]
+</code></pre><p>返回所有指定的key的value。对于每个不对应string或者不存在的key，都返回特殊值nil。正因为此，这个操作从来不会失败。   </p>
+<p>返回：多返回值: 指定的key对应的values的list  </p>
+<p>时间复杂度：O(N)</p>
+<p><strong>5.setnx</strong></p>
+<pre><code>SETNX key value
+</code></pre><p>如果key不存在，就设置key对应字符串value。在这种情况下，该命令和SET一样。当key已经存在时，就不做任何操作。SETNX是<code>SET if not exists</code>。</p>
+<p>返回：数字，只有以下两种值：  </p>
+<blockquote>
+<p>1 如果key被set<br>0 如果key没有被set    </p>
+</blockquote>
+<p>时间复杂度：O(1)  </p>
+<p>设计模式：使用SETNX来实现锁  </p>
+<pre><code>SETNX lock_key 锁过期时间（当前时间＋锁持续时间＋1）
+</code></pre><p>返回1:说明这key为lock_key的这个对象不存在，那么就可以拿到锁了。<br>返回0:说明key为lock_key的这个对象已经存在了，已经被其他操作锁住；这个时候我们可以选择用循环，等待锁释放，或者是使用非阻塞的方法，先去做其他的事情。  </p>
+<p>处理死锁：<br>因为我们设置的value是该锁的过期时间，所以如果出现死锁，我们可以根据value的值与当前的unix-time做比较：若时间已经超过了锁的过期时间，则使用<code>DEl key</code>操作将该对象移除，再调用<code>SETNX</code>。这里出现了一个竞争的问题：如果有多个客户端同时想要获取一个过期的锁，就是都想把它给删了，但是万一把后来的<code>SETNX</code>删了怎么办。  </p>
+<blockquote>
+<p>客户端c1,c2读取key为<code>lock_key</code>的锁，并与当前的时间做比较。它们在调用<code>SETNX</code>的时候都得到了返回值0，因为此时这个锁被客户端c3所持有，而c3在设置了该锁以后程序就挂掉了（无法解锁了）。<br>c1一看，时间到了，于是就调用<code>DEL lock_key</code>把锁给删了。<br>c1删完了，想这下锁应该归我了，于是调用了<code>SETNX XXX</code>，成功返回1。<br>c2也在同样的时间做了跟c1同样的事情。<br>结果出错了：c2把c1的锁给删了，然后去做自己的事情。。。这个时候就是c1，c2两个人都获取到了锁。 </p>
+</blockquote>
+<p><strong>天降c4,让它来解决这个问题</strong><br>c4发送<code>SETNX lock_key</code>请求，想要获取到锁。<br>但是此时挂掉的c3持有着锁啊，所以c4的到返回值是0。<br>于是聪明的c4调用<code>GET lock_key</code>来查看这个锁是否过期了：如果没有，那就sleep一下再看。<br>如果这个锁过期了呢？c4会执行以下这个命令:<br><code>GETSET lock_key 锁过期时间（当前时间＋锁持续时间＋1）</code><br>回顾一下getset的工作内容：set kv并且返回对应的value<br>如果有另外一个客户端，比如说c5，它在c4之前调用了<code>GETSET</code>命令获取到了锁。那么c4在调用<code>GETSET</code>的时候会发现返回的时间是未过期的。这个时候虽然c4把锁的过期时间往后推了一些，但也不是啥问题。<br>重要提示：为了使的锁的算法鲁棒性更强，持有锁的客户端在调用<code>DEL</code>来释放锁之前都要先检查该锁是否过期了。就拿上面挂掉的客户端c3来说，万一他不是真的挂了呢，只是中间遇到点问题，所以执行的速度慢了，超过了锁的过期时间。等到他执行完程序，准备来释放锁的时候，锁早就被后来的程序以过期的名义给删掉了，这个时候c3要是直接用<code>DEL</code>来释放锁，那可就把后来程序的锁给删了。    </p>
+<p><strong>6.setex</strong></p>
+<pre><code>SETEX key seconds value
+</code></pre><p>设置key对应字符串value，并且设置key在给定的seconds时间之后超时过期。这个命令等效于执行下面的命令：</p>
+<pre><code>SET mykey value
+EXPIRE mykey seconds
+</code></pre><p>SETEX是原子的，也可以通过把上面两个命令放到MULTI/EXEC块中执行的方式重现。相比连续执行上面两个命令，它更快，因为当Redis当做缓存使用时，这个操作更加常用。  </p>
+<p>返回：状态码      </p>
+<p>时间复杂度：O(1)  </p>
+<p><strong>5.psetex</strong></p>
+<pre><code>PSETEX key milliseconds value
+</code></pre><p>同setex，唯一的不同点是psetex使用毫秒为单位，而setex为秒。  </p>
+<p><strong>6.msetnx</strong></p>
+<pre><code>MSETNX key value [key value ...]
+</code></pre><p>对应给定的keys到他们相应的values上。只要有一个key已经存在，MSETNX一个操作都不会执行。 由于这种特性，MSETNX可以实现要么所有的操作都成功，要么一个都不执行，这样可以用来设置不同的key，来表示一个唯一的对象的不同字段。<br>MSETNX是原子的，所以所有给定的keys是一次性set的。客户端不可能看到这种一部分keys被更新而另外的没有改变的情况。</p>
+<p>返回：数字，只有以下两种值：  </p>
+<blockquote>
+<p>1 如果所有的key被set<br>0 如果没有key被set(至少其中有一个key是存在的)    </p>
+</blockquote>
+<p>时间复杂度：O(N)，这里N是要set的key的个数。 </p>
+<p><strong>7.setrange</strong></p>
+<pre><code>SETRANGE key offset value
+</code></pre><p>这个命令的作用是覆盖key对应的string的一部分，从指定的offset处开始，覆盖value的长度。如果offset比当前key对应string还要长，那这个string后面就补0以达到offset。不存在的keys被认为是空字符串，所以这个命令可以确保key有一个足够大的字符串，能在offset处设置value。<br>注意，offset最大可以是229-1(536870911),因为redis字符串限制在512M大小。如果你需要超过这个大小，你可以用多个keys。<br>警告：当set最后一个字节并且key还没有一个字符串value或者其value是个比较小的字符串时，Redis需要立即分配所有内存，这有可能会导致服务阻塞一会。在一台2010MacBook Pro上，set536870911字节（分配512MB）需要～300ms，set134217728字节(分配128MB)需要～80ms，set33554432比特位（分配32MB）需要～30ms，set8388608比特（分配8MB）需要8ms。注意，一旦第一次内存分配完，后面对同一个key调用SETRANGE就不会预先得到内存分配。  </p>
+<p>模式<br>正因为有了SETRANGE和类似功能的GETRANGE命令，你可以把Redis的字符串当成线性数组，随机访问只要O(1)复杂度。这在很多真实场景应用里非常快和高效。  </p>
+<p>返回：数字：该命令修改后的字符串长度  </p>
+<p>时间复杂度：O(1)，不考虑拷贝新字符串的开销。通常这个字符串非常小，所以均摊代价为O(1)。如果考虑的话，复杂度就是O(M)，M是参数value的长度。  </p>
+<p> <strong>8.getset</strong></p>
+<pre><code>GETSET key value
+</code></pre><p>自动将key对应到value并且返回原来key对应的value。如果key存在但是对应的value不是字符串，就返回错误。  </p>
+<p>设计模式：<br>GETSET可以和INCR一起使用实现支持重置的计数功能。<br>举个例子：每当有事件发生的时候，一段程序都会调用INCR给key mycounter加1，但是有时我们需要获取计数器的值，并且自动将其重置为0。这可以通过GETSET mycounter “0”来实现  </p>
+<p>时间复杂度：O(1)  </p>
+<p><strong>9.decr</strong></p>
+<pre><code>DECR key
+</code></pre><p>对key对应的数字做减1操作。<br>如果key不存在，那么在操作之前，这个key对应的值会被置为0。<br>如果key有一个错误类型的value或者是一个不能表示成数字的字符串，就返回错误。<br>这个操作最大支持在64位有符号的整型数字。  </p>
+<p>返回：Integer：减小之后的value</p>
+<p>时间复杂度：O(1)  </p>
+<p><strong>10.decrby</strong>  </p>
+<pre><code>DECRBY key decrement
+</code></pre><p>将key对应的数字减decrement。<br>如果key不存在，操作之前，key就会被置为0。<br>如果key的value类型错误或者是个不能表示成数字的字符串，就返回错误。<br>这个操作最多支持64位有符号的正型数字。  </p>
+<p>返回：Integer：减小之后的value</p>
+<p>时间复杂度：O(1)  </p>
+<p><strong>11.incr</strong></p>
+<pre><code>INCR key
+</code></pre><p>对key对应的数字做加1操作。如果key不存在，那么在操作之前，这个key对应的值会被置为0。如果key有一个错误类型的value或者是一个不能表示成数字的字符串，就返回错误。这个操作最大支持在64位有符号的整型数字。<br>提醒：这是一个string操作，因为Redis没有专用的数字类型。key对应的string都被解释成10进制64位有符号的整型来执行这个操作。<br>Redis会用相应的整数表示方法存储整数，所以对于表示数字的字符串，没必要为了用字符串表示整型存储做额外开销。</p>
+<p>返回：Integer：增加之后的value</p>
+<p>时间复杂度：O(1)  </p>
+<p><strong>12.incrby</strong></p>
+<pre><code>INCRBY key increment
+</code></pre><p>将key对应的数字加decrement。<br>如果key不存在，操作之前，key就会被置为0。<br>如果key的value类型错误或者是个不能表示成数字的字符串，就返回错误。<br>这个操作最多支持64位有符号的正型数字。    </p>
+<p>返回：Integer：增加之后的value</p>
+<p>时间复杂度：O(1)   </p>
+<p><strong>13.incrbyfloat</strong>  </p>
+<pre><code>INCRBYFLOAT key increment
+</code></pre><p>将key对应的数字加increment。<br>如果key不存在，操作之前，key就会被置为0。<br>如果key的value类型错误或者是个不能表示成数字的字符串，就返回错误。<br>如果value为int，添加float后也会出现小数点。<br>小数点以后最后的0会被省略。<br>这个操作最多支持64位有符号的正型数字。      </p>
+<p>返回：Bulk reply：增加之后的value  </p>
+<p>时间复杂度：O(1)  </p>
+<p> <strong>14.getrange</strong></p>
+<pre><code>GETRANGE key start end
+</code></pre><p>警告：这个命令是被改成GETRANGE的，在小于2.0的Redis版本中叫SUBSTR。 返回key对应的字符串value的子串，这个子串是由start和end位移决定的（两者都在string内）。可以用负的位移来表示从string尾部开始数的下标。所以-1就是最后一个字符，-2就是倒数第二个，以此类推。<br>这个函数处理超出范围的请求时，都把结果限制在string内。  </p>
+<p>返回：Bulk replies </p>
+<p>时间复杂度：O(1)，这里的N是返回的string的长度。复杂度是由返回的字符串长度决定的，但是因为从一个已经存在的字符串创建一个子串是很容易的，所以对于较小的字符串，可以认为是O(1)的复杂度。  </p>
+<p> <strong>15.strlen</strong></p>
+<pre><code>STRLEN key
+</code></pre><p>返回key的string类型value的长度。如果key对应的非string类型，就返回错误。  </p>
+<p>返回：整型数字：key对应的字符串value的长度，或者0（key不存在）  </p>
+<p><strong>16.append</strong></p>
+<pre><code>APPEND key value
+</code></pre><p>如果 key 已经存在，并且值为字符串，那么这个命令会把 value 追加到原来值（value）的结尾。<br>如果 key 不存在，那么它将首先创建一个空字符串的key，再执行追加操作，这种情况 APPEND 将类似于 SET 操作。</p>
+<p>返回：Integer：append后字符串值（value）的长度。  </p>
+<p>时间复杂度：O(1) </p>
+<p><strong>17.bitcount</strong></p>
+<pre><code>BITCOUNT key [start end]
+</code></pre><p>计算 key 对应值的位数<br>如果存在start end，则计算指定范围位数<br>不存在，则默认计算整个valule的位数<br>start,end:-1表示倒数第一个，-2表示倒数第二个，以此类推<br>如果key不存在，则当空字符串处理，返回0  </p>
+<p>返回：Integer：append后字符串值（value）的长度。</p>
+<p>时间复杂度：O(N)  </p>
+<p>————翁英健</p>
+<p>本文地址：<a href="http://wengyingjian.github.io/2015/12/22/redis-learn-string/" target="_blank" rel="noopener">http://wengyingjian.github.io/2015/12/22/redis-learn-string/</a></p>
+<p>-End-</p>
+<hr>
+</div><div class="tags"><a href="/tags/linux/">linux</a><a href="/tags/缓存/">缓存</a><a href="/tags/redis/">redis</a></div><div class="post-share"><div class="bdsharebuttonbox"><span style="float:left;line-height: 28px;height: 28px;font-size:16px;font-weight:blod">分享到：</span><a href="#" data-cmd="more" class="bds_more"></a><a href="#" data-cmd="mshare" title="分享到一键分享" class="bds_mshare"></a><a href="#" data-cmd="fbook" title="分享到Facebook" class="bds_fbook"></a><a href="#" data-cmd="twi" title="分享到Twitter" class="bds_twi"></a><a href="#" data-cmd="linkedin" title="分享到linkedin" class="bds_linkedin"></a><a href="#" data-cmd="youdao" title="分享到有道云笔记" class="bds_youdao"></a><a href="#" data-cmd="evernotecn" title="分享到印象笔记" class="bds_evernotecn"></a><a href="#" data-cmd="weixin" title="分享到微信" class="bds_weixin"></a><a href="#" data-cmd="qzone" title="分享到QQ空间" class="bds_qzone"></a><a href="#" data-cmd="tsina" title="分享到新浪微博" class="bds_tsina"></a></div></div><div class="post-nav"><a href="/2015/12/24/java-404/" class="pre">404查错</a><a href="/2015/12/20/redis-learn-commands/" class="next">Redis学习（二）－常用命令</a></div><div id="comments"></div></div></div></div><div class="layout-r"><div id="sidebar"><div class="search-pla"></div><div id="toc" class="widget"><div class="widget-title"><i class="fa fa-fei">文章目录</i></div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#命令"><span class="toc-text">命令</span></a></li></ol></div><div class="widget"><div class="widget-title"><i class="fa fa-xie"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/11/28/idea-license/">IDEA 2016 最新版 激活 破解</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/03/10/nginx-usage-list/">Nginx－虚拟主机、反向代理、负载均衡</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/02/20/wechat-develop/">微信公众号开发</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/02/08/server-gitlab-init/">Centos7 Gitlab 环境搭建</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/02/06/spring-source-load-xml/">Spring源码（一）－读取xml配置</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/02/04/maven-archetype-bugfix/">Maven Archetype编写（二）</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/01/31/maven-archetype-init/">Maven Archetype编写（一）</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/01/23/maven-autoconf-fix/">Maven Autoconf打包问题</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/01/19/docker-what-is/">Docker是什么</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/01/10/nginx-note-reverse-proxy/">Nginx学习笔记（三）－Nginx作为反向代理</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-gui"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/blog/">blog</a><span class="category-list-count">49</span></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-biao"> 标签</i></div><div class="tagcloud"><a href="/tags/性能/" style="font-size: 15px;">性能</a> <a href="/tags/github/" style="font-size: 15px;">github</a> <a href="/tags/helloWorld/" style="font-size: 15px;">helloWorld</a> <a href="/tags/域名/" style="font-size: 15px;">域名</a> <a href="/tags/linux/" style="font-size: 15px;">linux</a> <a href="/tags/随笔/" style="font-size: 15px;">随笔</a> <a href="/tags/docker/" style="font-size: 15px;">docker</a> <a href="/tags/rabbitmq/" style="font-size: 15px;">rabbitmq</a> <a href="/tags/消息队列/" style="font-size: 15px;">消息队列</a> <a href="/tags/hexo/" style="font-size: 15px;">hexo</a> <a href="/tags/自动化工具/" style="font-size: 15px;">自动化工具</a> <a href="/tags/java/" style="font-size: 15px;">java</a> <a href="/tags/404/" style="font-size: 15px;">404</a> <a href="/tags/idea/" style="font-size: 15px;">idea</a> <a href="/tags/部署/" style="font-size: 15px;">部署</a> <a href="/tags/jvm/" style="font-size: 15px;">jvm</a> <a href="/tags/jekyll/" style="font-size: 15px;">jekyll</a> <a href="/tags/内存/" style="font-size: 15px;">内存</a> <a href="/tags/服务器/" style="font-size: 15px;">服务器</a> <a href="/tags/spring/" style="font-size: 15px;">spring</a> <a href="/tags/jenkins/" style="font-size: 15px;">jenkins</a> <a href="/tags/git/" style="font-size: 15px;">git</a> <a href="/tags/maven/" style="font-size: 15px;">maven</a> <a href="/tags/nginx/" style="font-size: 15px;">nginx</a> <a href="/tags/缓存/" style="font-size: 15px;">缓存</a> <a href="/tags/redis/" style="font-size: 15px;">redis</a> <a href="/tags/hudson/" style="font-size: 15px;">hudson</a> <a href="/tags/ubuntu/" style="font-size: 15px;">ubuntu</a> <a href="/tags/tomcat/" style="font-size: 15px;">tomcat</a> <a href="/tags/nexus/" style="font-size: 15px;">nexus</a> <a href="/tags/ssh/" style="font-size: 15px;">ssh</a> <a href="/tags/商品超卖/" style="font-size: 15px;">商品超卖</a> <a href="/tags/数据库/" style="font-size: 15px;">数据库</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-archive"> 归档</i></div><ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">十一月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">三月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">二月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">一月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">十二月 2015</a></li></ul></div></div></div></div><a id="totop" href="#top"></a><div id="footer"><div class="footer-info"><p><a href="/baidusitemap.xml">Baidu Site Haritası</a> |  <a href="/atom.xml">订阅</a> |  <a href="/about/">关于</a></p><p>本站总访问量：<i id="busuanzi_container_site_pv"><i id="busuanzi_value_site_pv"></i></i>次</p><p><span> Copyright &copy;<a href="/." rel="nofollow">authorwyj.</a></span><span> Theme by<a rel="nofollow" target="_blank" href="https://github.com/chaooo/hexo-theme-BlueLake"> BlueLake.</a></span><span> Count by<a href="http://busuanzi.ibruce.info/"> busuanzi.</a></span><span> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a></span></p></div></div></div><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><script type="text/javascript" src="/js/search.json.js?v=2.0.1"></script><script type="text/javascript" src="/js/toctotop.js?v=2.0.1" async></script><script>window._bd_share_config={"common":{"bdSnsKey":{},"bdText":"","bdMini":"2","bdMiniList":["mshare","weixin","tsina","qzone","linkedin","fbook","twi","print","renren","sqq","evernotecn","bdysc","tqq","tqf","bdxc","kaixin001","tieba","douban","bdhome","thx","ibaidu","meilishuo","mogujie","diandian","huaban","duitang","hx","fx","youdao","sdo","qingbiji","people","xinhua","mail","isohu","yaolan","wealink","ty","iguba","h163","copy"],"bdPic":"","bdStyle":"1","bdSize":"16"},"share":{},"image":{"viewList":["tsina","qzone","weixin","fbook","twi","linkedin","youdao","evernotecn","mshare"],"viewText":"分享到：","viewSize":"16"},"selectShare":{"bdContainerClass":null,"bdSelectMiniList":["tsina","qzone","weixin","fbook","twi","linkedin","youdao","evernotecn","mshare"]}};with(document)0[(getElementsByTagName('head')[0]||head).appendChild(createElement('script')).src='http://bdimg.share.baidu.com/static/api/js/share.js?v=89860593.js?cdnversion='+~(-new Date()/36e5)];
+</script></body></html>
